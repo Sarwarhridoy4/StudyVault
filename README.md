@@ -2,7 +2,7 @@
 
 A production-ready REST API built with **TypeScript + Express.js + Bun** for the *StudyVault* learning platform.
 
-This backend provides secure, scalable, and modular APIs for managing **study items (courses / learning modules)** with filtering, file uploads, and comprehensive security hardening.
+This backend provides secure, scalable, and modular APIs for managing **courses and learning modules** with filtering, file uploads, and comprehensive security hardening.
 
 **Tech Stack:** TypeScript • Bun • Express.js • Mongoose • Zod • Helmet • CORS • Winston • Rate Limiting • Cloudinary
 
@@ -11,7 +11,7 @@ This backend provides secure, scalable, and modular APIs for managing **study it
 ## 🚀 Features
 
 ### Core Features
-- ✅ Study Items CRUD (Create, Read, Update, Delete)
+- ✅ Courses & Modules CRUD (Create, Read, Update, Delete)
 - ✅ Advanced Search, Filter, Sort, Pagination
 - ⚠️ Role-Based Access Control (RBAC middleware ready, auth not implemented)
 - ⚠️ Firebase Auth-ready middleware (auth not implemented)
@@ -22,6 +22,7 @@ This backend provides secure, scalable, and modular APIs for managing **study it
 - ✅ Centralized logging (Winston)
 - ✅ Production security hardening
 - ✅ Scalable modular architecture
+- ✅ Course-Module linking (many-to-many)
 
 ---
 
@@ -239,24 +240,42 @@ src/
  ├── services/
  │    ├── cloudinary.service.ts      # Cloudinary upload/delete logic
  │    └── email.service.ts           # Email service (future)
- ├── modules/
- │    ├── item/                      # Item module (CLEAN ARCHITECTURE)
- │    │    ├── item.route.ts         # Routes: GET /items, POST /add, PATCH /:id, DELETE /:id
- │    │    ├── item.controller.ts    # HTTP layer: validate input, call service, send response
- │    │    ├── item.service.ts       # Business logic layer
- │    │    ├── item.repository.ts    # Database operations (Mongoose)
- │    │    ├── item.model.ts         # Mongoose schema & model
- │    │    ├── item.types.ts         # TypeScript interfaces & utility types
- │    │    └── item.validation.ts    # Zod schemas (client + create + update)
- │    ├── user/                      # User module (Firebase users)
- │    │    ├── user.model.ts         # Mongoose User schema
- │    │    └── user.types.ts         # User interfaces & types
- │    ├── admin/                     # Admin module (RBAC protected)
- │    │    └── admin.route.ts        # Admin routes: /admin/items, /admin/users
- │    ├── public/                    # Public pages (no auth)
- │    │    └── public.route.ts       # Routes: / (landing), /about
- │    └── upload/                    # File upload module
- │         └── upload.route.ts       # Routes: POST /upload, DELETE /upload/:publicId
+  ├── modules/
+  │    ├── course/                     # Course module (CLEAN ARCHITECTURE)
+  │    │    ├── course.route.ts        # Routes: GET /courses, POST /, PATCH /:id, DELETE /:id
+  │    │    ├── course.controller.ts   # HTTP layer: validate input, call service, send response
+  │    │    ├── course.service.ts      # Business logic layer
+  │    │    ├── course.repository.ts   # Database operations (Mongoose)
+  │    │    ├── course.model.ts        # Mongoose schema & model
+  │    │    ├── course.types.ts        # TypeScript interfaces & utility types
+  │    │    └── course.validation.ts   # Zod schemas
+  │    │
+  │    ├── module/                     # Module module (CLEAN ARCHITECTURE) - formerly "item"
+  │    │    ├── module.route.ts        # Routes: GET /modules, POST /add, PATCH /:id, DELETE /:id
+  │    │    ├── module.controller.ts   # HTTP layer
+  │    │    ├── module.service.ts      # Business logic layer
+  │    │    ├── module.repository.ts   # Database operations
+  │    │    ├── module.model.ts        # Mongoose schema & model
+  │    │    ├── module.types.ts        # TypeScript interfaces
+  │    │    └── module.validation.ts   # Zod schemas
+  │    │
+  │    ├── coursemodule/               # Course-Module relationship (NEW)
+  │    │    ├── coursemodule.route.ts  # Admin routes for linking/unlinking
+  │    │    ├── coursemodule.controller.ts
+  │    │    ├── coursemodule.service.ts
+  │    │    ├── coursemodule.repository.ts
+  │    │    ├── coursemodule.model.ts  # Join table schema
+  │    │    ├── coursemodule.types.ts
+  │    │    └── coursemodule.validation.ts
+  │    │
+  │    ├── admin/                      # Admin module (RBAC protected)
+  │    │    └── admin.route.ts         # Admin routes: /admin/modules, /admin/courses, /admin/coursemodule
+  │    │
+  │    ├── public/                     # Public pages (no auth)
+  │    │    └── public.route.ts        # Routes: / (landing), /about
+  │    │
+  │    └── upload/                     # File upload module
+  │         └── upload.route.ts        # Routes: POST /upload, DELETE /upload/:publicId
  ├── emails/                        # Email templates (future)
  │    └── templates/                # EJS templates
  └── queue/                         # Background job queues (future)
@@ -282,13 +301,13 @@ graph TB
             R5[RBAC Middleware<br/>Role/Permission Check]
         end
 
-        subgraph "Route → Controller → Service → Repository"
-            H1[item.route.ts<br/>GET /api/v1/items]
-            H2[item.controller.ts<br/>HTTP Layer Only]
-            H3[item.service.ts<br/>Business Logic]
-            H4[item.repository.ts<br/>DB Operations]
-            H5[Mongoose / MongoDB]
-        end
+         subgraph "Route → Controller → Service → Repository"
+             H1[module.route.ts<br/>GET /api/v1/modules]
+             H2[module.controller.ts<br/>HTTP Layer Only]
+             H3[module.service.ts<br/>Business Logic]
+             H4[module.repository.ts<br/>DB Operations]
+             H5[Mongoose / MongoDB]
+         end
 
         subgraph "Response Pipeline"
             E1[catchAsync<br/>Error Capture]
@@ -343,7 +362,7 @@ graph TB
 
 ## 🔄 Request Flow Diagrams
 
-### 1. GET /api/v1/items (List with Filters)
+### 1. GET /api/v1/modules (List with Filters)
 
 ```mermaid
 sequenceDiagram
@@ -355,26 +374,26 @@ sequenceDiagram
     participant M as MongoDB
     participant AF as ApiFeatures
 
-    C->>R: GET /api/v1/items?search=react&category=frontend&page=1
-    R->>Ctrl: getAllItems(req.query)
-    Ctrl->>S: getAllItems(query)
+    C->>R: GET /api/v1/modules?search=react&category=frontend&page=1
+    R->>Ctrl: getAllModules(req.query)
+    Ctrl->>S: getAllModules(query)
     S->>Rep: findAll(query)
-    Rep->>AF: new ApiFeatures(Item.find(), query)
+    Rep->>AF: new ApiFeatures(Module.find(), query)
     AF->>AF: .search(['title','description'])
     AF->>AF: .filter()
     AF->>AF: .sort()
     AF->>AF: .paginate()
     AF->>M: buildQuery()
-    M-->>AF: items[]
+    M-->>AF: modules[]
     AF-->>Rep: results
-    Rep-->>S: items[]
-    S-->>Ctrl: items[]
-    Ctrl->>C: 200 OK { success, data: items, meta }
+    Rep-->>S: modules[]
+    S-->>Ctrl: modules[]
+    Ctrl->>C: 200 OK { success, data: modules, meta }
 ```
 
 ---
 
-### 2. POST /api/v1/items/add (Create with Validation)
+### 2. POST /api/v1/modules/add (Create with Validation)
 
 ```mermaid
 sequenceDiagram
@@ -386,20 +405,20 @@ sequenceDiagram
     participant Rep as Repository
     participant M as MongoDB
 
-    C->>R: POST /api/v1/items/add<br/>{title, description, ...}
-    R->>V: validate(itemClientSchema)
+    C->>R: POST /api/v1/modules/add<br/>{title, description, ...}
+    R->>V: validate(moduleClientSchema)
     V->>V: Zod.parse(req.body)
     alt Invalid
         V-->>C: 400 { errors: ['Title must be...','...'] }
     else Valid
         V->>Ctrl: req.body (validated)
-        Ctrl->>S: createItem({ ...body, createdBy: 'system' })
+        Ctrl->>S: createModule({ ...body, createdBy: 'system' })
         S->>Rep: create(data)
         Rep->>M: insertOne()
-        M-->>Rep: newItem
-        Rep-->>S: IItem
-        S-->>Ctrl: IItem
-        Ctrl->>C: 201 { data: item }
+        M-->>Rep: newModule
+        Rep-->>S: IModule
+        S-->>Ctrl: IModule
+        Ctrl->>C: 201 { data: module }
     end
 ```
 
@@ -444,12 +463,12 @@ graph TB
 
 ---
 
-### GET /api/v1/items (List Response)
+### GET /api/v1/modules (List Response)
 
 ```json
 {
   "success": true,
-  "message": "Items retrieved successfully",
+  "message": "Modules retrieved successfully",
   "data": [
     {
       "id": "507f1f77bcf86cd799439011",
@@ -475,7 +494,71 @@ graph TB
 
 ---
 
-### POST /api/v1/items/add (Request Payload)
+### POST /api/v1/modules/add Request
+
+```json
+{
+  "title": "Node.js Fundamentals",
+  "shortDescription": "Master Node.js runtime",
+  "description": "Learn event loop, streams, buffers, and build REST APIs",
+  "category": "backend",
+  "price": 29.99,
+  "image": "https://example.com/nodejs.jpg"
+}
+```
+
+**Note:** `createdBy` is injected by backend from authenticated user (not provided by client).
+
+---
+
+### Validation Error Response (Zod)
+
+**Input:** `{ "title": "ab", "price": -5 }`
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": [
+    "Title must be at least 3 characters",
+    "Short description must be at least 10 characters",
+    "Description must be at least 20 characters",
+    "Price cannot be negative"
+  ],
+  "data": null,
+  "meta": null
+}
+```
+
+---
+
+### 404 Error Response
+
+```json
+{
+  "success": false,
+  "message": "Module not found",
+  "data": null,
+  "meta": null
+}
+```
+
+---
+
+### 409 Duplicate Key Error
+
+```json
+{
+  "success": false,
+  "message": "Duplicate field value: email. Please use a different value.",
+  "data": null,
+  "meta": null
+}
+```
+
+---
+
+### POST /api/v1/modules/add (Request Payload)
 
 ```json
 {
@@ -559,7 +642,11 @@ graph LR
 
 ```mermaid
 erDiagram
-    USER ||--o{ ITEM : "creates"
+    USER ||--o{ MODULE : "creates"
+    USER ||--o{ COURSE : "creates"
+    COURSE ||--o{ COURSE_MODULE : "contains"
+    MODULE ||--o{ COURSE_MODULE : "belongs_to"
+    
     USER {
         string uid PK "Firebase UID"
         string email UK
@@ -570,7 +657,8 @@ erDiagram
         datetime createdAt
         datetime updatedAt
     }
-    ITEM {
+    
+    MODULE {
         string _id PK
         string title
         string shortDescription
@@ -582,6 +670,29 @@ erDiagram
         datetime createdAt
         datetime updatedAt
     }
+    
+    COURSE {
+        string _id PK
+        string title
+        string shortDescription
+        string description
+        string category
+        enum difficulty "beginner|intermediate|advanced"
+        number price
+        string image
+        string createdBy FK
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    COURSE_MODULE {
+        string _id PK
+        string courseId FK
+        string moduleId FK
+        number order
+        datetime createdAt
+        datetime updatedAt
+    }
 ```
 
 ---
@@ -590,7 +701,7 @@ erDiagram
 
 ```mermaid
 graph TD
-    A[Client:<br/>GET /api/v1/items?search=react<br/>&category=frontend&page=1&limit=10] --> B[Router]
+    A[Client:<br/>GET /api/v1/modules?search=react<br/>&category=frontend&page=1&limit=10] --> B[Router]
     B --> C[Controller]
     C --> D[Service]
     D --> E[Repository]
@@ -602,9 +713,7 @@ graph TD
     Q3 --> Q4[.paginate()<br/>page, limit]
     Q4 --> Z[MongoDB Query]
     Z --> H[Execute]
-    H --> I[Response:<br/>{success, data: items, meta}]
-    
-    I --> J[Client receives<br/>paginated, filtered items]
+    H --> I[Response:<br/>{success, data: modules, meta}]
 ```
 
 ---
@@ -634,15 +743,26 @@ graph LR
 | GET | `/` | Public | Landing page |
 | GET | `/about` | Public | About page |
 | GET | `/health` | Public | Health check |
-| GET | `/api/v1/items` | Public | List all items (with filters) |
-| GET | `/api/v1/items/:id` | Public | Get single item |
-| POST | `/api/v1/items/add` | User | Create new item |
-| PATCH | `/api/v1/items/:id` | User | Update own item |
-| DELETE | `/api/v1/items/:id` | User | Delete own item |
-| GET | `/api/v1/items/manage` | User | List user's items |
-| GET | `/api/v1/admin/items` | Admin | View all items |
-| PATCH | `/api/v1/admin/items/:id` | Admin | Edit any item |
-| DELETE | `/api/v1/admin/items/:id` | Admin | Delete any item |
+| GET | `/api/v1/modules` | Public | List all modules (with filters) |
+| GET | `/api/v1/modules/:id` | Public | Get single module |
+| POST | `/api/v1/modules/add` | User | Create new module |
+| PATCH | `/api/v1/modules/:id` | User | Update own module |
+| DELETE | `/api/v1/modules/:id` | User | Delete own module |
+| GET | `/api/v1/modules/manage` | User | List user's modules |
+| GET | `/api/v1/courses` | Public | List all courses |
+| GET | `/api/v1/courses/:id` | Public | Get single course |
+| POST | `/api/v1/courses` | Admin | Create new course |
+| PATCH | `/api/v1/courses/:id` | Admin | Update course |
+| DELETE | `/api/v1/courses/:id` | Admin | Delete course |
+| GET | `/api/v1/admin/modules` | Admin | View all modules |
+| PATCH | `/api/v1/admin/modules/:id` | Admin | Edit any module |
+| DELETE | `/api/v1/admin/modules/:id` | Admin | Delete any module |
+| POST | `/api/v1/admin/courses/:courseId/modules/:moduleId/link` | Admin | Link module to course |
+| DELETE | `/api/v1/admin/courses/:courseId/modules/:moduleId/unlink` | Admin | Unlink module from course |
+| GET | `/api/v1/admin/courses/:courseId/modules` | Admin | Get course modules |
+| POST | `/api/v1/admin/courses/:courseId/modules/batch/link` | Admin | Batch link modules to course |
+| DELETE | `/api/v1/admin/courses/:courseId/modules/batch/unlink` | Admin | Batch unlink modules from course |
+| GET | `/api/v1/admin/courses` | Admin | View all courses |
 | GET | `/api/v1/admin/users` | Admin | View all users |
 | POST | `/api/v1/upload` | User | Upload image |
 | DELETE | `/api/v1/upload/:publicId` | User | Delete image |
@@ -682,13 +802,13 @@ graph TB
             R5[RBAC Middleware<br/>Role/Permission Check]
         end
 
-        subgraph "route → controller → service → repository"
-            H1[item.route.ts<br/>GET /api/v1/items]
-            H2[item.controller.ts<br/>HTTP Layer Only]
-            H3[item.service.ts<br/>Business Logic]
-            H4[item.repository.ts<br/>DB Operations]
-            H5[Mongoose / MongoDB]
-        end
+         subgraph "route → controller → service → repository"
+             H1[module.route.ts<br/>GET /api/v1/modules]
+             H2[module.controller.ts<br/>HTTP Layer Only]
+             H3[module.service.ts<br/>Business Logic]
+             H4[module.repository.ts<br/>DB Operations]
+             H5[Mongoose / MongoDB]
+         end
 
         subgraph "Response Pipeline"
             E1[catchAsync<br/>Error Capture]
@@ -743,7 +863,7 @@ graph TB
 
 ## 🔄 Request Flow Diagrams
 
-### 1. GET /api/v1/items (List with Filters)
+### 1. GET /api/v1/modules (List with Filters)
 
 ```mermaid
 sequenceDiagram
@@ -755,26 +875,26 @@ sequenceDiagram
     participant M as MongoDB
     participant AF as ApiFeatures
 
-    C->>R: GET /api/v1/items?search=react&category=frontend&page=1
-    R->>Ctrl: getAllItems(req.query)
-    Ctrl->>S: getAllItems(query)
+    C->>R: GET /api/v1/modules?search=react&category=frontend&page=1
+    R->>Ctrl: getAllModules(req.query)
+    Ctrl->>S: getAllModules(query)
     S->>Rep: findAll(query)
-    Rep->>AF: new ApiFeatures(Item.find(), query)
+    Rep->>AF: new ApiFeatures(Module.find(), query)
     AF->>AF: .search(['title','description'])
     AF->>AF: .filter()
     AF->>AF: .sort()
     AF->>AF: .paginate()
     AF->>M: buildQuery()
-    M-->>AF: items[]
+    M-->>AF: modules[]
     AF-->>Rep: results
-    Rep-->>S: items[]
-    S-->>Ctrl: items[]
-    Ctrl->>C: 200 OK { success, data: items, meta }
+    Rep-->>S: modules[]
+    S-->>Ctrl: modules[]
+    Ctrl->>C: 200 OK { success, data: modules, meta }
 ```
 
 ---
 
-### 2. POST /api/v1/items/add (Create)
+### 2. POST /api/v1/modules/add (Create)
 
 ```mermaid
 sequenceDiagram
@@ -786,20 +906,20 @@ sequenceDiagram
     participant Rep as Repository
     participant M as MongoDB
 
-    C->>R: POST /api/v1/items/add<br/>{title, description,...}
-    R->>V: validate(itemClientSchema)
+    C->>R: POST /api/v1/modules/add<br/>{title, description,...}
+    R->>V: validate(moduleClientSchema)
     V->>V: Zod.parse(req.body)
     alt Invalid
         V-->>C: 400 { errors: [...] }
     else Valid
         V->>Ctrl: validated body
-        Ctrl->>S: createItem(data + createdBy)
+        Ctrl->>S: createModule(data + createdBy)
         S->>Rep: create(data)
         Rep->>M: insertOne()
-        M-->>Rep: newItem
-        Rep-->>S: IItem
-        S-->>Ctrl: IItem
-        Ctrl->>C: 201 Created { data: item }
+        M-->>Rep: newModule
+        Rep-->>S: IModule
+        S-->>Ctrl: IModule
+        Ctrl->>C: 201 Created { data: module }
     end
 ```
 
@@ -825,7 +945,7 @@ graph TB
 
 ## 📦 Payload Examples
 
-### Item Model (Complete)
+### Module Model (Complete)
 
 ```json
 {
@@ -834,9 +954,8 @@ graph TB
   "shortDescription": "Learn React from zero to hero in 30 days",
   "description": "Complete React.js course covering Hooks, Context, Redux, Next.js...",
   "category": "frontend",
-  "difficulty": "intermediate",
   "price": 49.99,
-  "image": "https://res.cloudinary.com/.../react-course.jpg",
+  "image": "https://res.cloudinary.com/.../react-module.jpg",
   "createdBy": "firebase_uid_12345",
   "createdAt": "2026-04-24T10:00:00.000Z",
   "updatedAt": "2026-04-24T12:00:00.000Z"
@@ -845,18 +964,18 @@ graph TB
 
 ---
 
-### GET /api/v1/items Response
+### GET /api/v1/modules Response
 
 ```json
 {
   "success": true,
-  "message": "Items retrieved successfully",
+  "message": "Modules retrieved successfully",
   "data": [
     {
       "id": "507f1f77bcf86cd799439011",
       "title": "React Basics",
       "shortDescription": "Learn React fast",
-      "description": "Full course content...",
+      "description": "Full module content...",
       "category": "frontend",
       "price": 0,
       "image": "https://example.com/image.jpg",
@@ -876,7 +995,7 @@ graph TB
 
 ---
 
-### POST /api/v1/items/add Request
+### POST /api/v1/modules/add Request
 
 ```json
 {
@@ -893,52 +1012,65 @@ graph TB
 
 ---
 
-### Validation Error Response (Zod)
-
-**Input:** `{ "title": "ab", "price": -5 }`
+### Course Model (Complete)
 
 ```json
 {
-  "success": false,
-  "message": "Validation failed",
-  "errors": [
-    "Title must be at least 3 characters",
-    "Short description must be at least 10 characters",
-    "Description must be at least 20 characters",
-    "Price cannot be negative"
+  "_id": "507f1f77bcf86cd799439012",
+  "title": "Full-Stack Development",
+  "shortDescription": "Master frontend and backend technologies",
+  "description": "Complete full-stack course covering React, Node.js, and MongoDB",
+  "category": "fullstack",
+  "difficulty": "advanced",
+  "price": 99.99,
+  "image": "https://res.cloudinary.com/.../fullstack-course.jpg",
+  "createdBy": "firebase_uid_12345",
+  "createdAt": "2026-04-24T10:00:00.000Z",
+  "updatedAt": "2026-04-24T12:00:00.000Z"
+}
+```
+
+---
+
+### GET /api/v1/courses Response (with modules)
+
+```json
+{
+  "success": true,
+  "message": "Courses retrieved successfully",
+  "data": [
+    {
+      "id": "507f1f77bcf86cd799439012",
+      "title": "Full-Stack Development",
+      "shortDescription": "Master frontend and backend technologies",
+      "description": "Complete full-stack course covering React, Node.js, and MongoDB",
+      "category": "fullstack",
+      "difficulty": "advanced",
+      "price": 99.99,
+      "image": "https://res.cloudinary.com/.../fullstack-course.jpg",
+      "createdBy": "user123",
+      "modules": [
+        {
+          "module": { "_id": "...", "title": "React Basics", ... },
+          "order": 0
+        },
+        {
+          "module": { "_id": "...", "title": "Node.js Fundamentals", ... },
+          "order": 1
+        }
+      ],
+      "createdAt": "2026-04-24T10:00:00Z",
+      "updatedAt": "2026-04-24T10:00:00Z"
+    }
   ],
-  "data": null,
-  "meta": null
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 5,
+    "totalPages": 1
+  }
 }
 ```
-
----
-
-### 404 Error Response
-
-```json
-{
-  "success": false,
-  "message": "Item not found",
-  "data": null,
-  "meta": null
-}
-```
-
----
-
-### 409 Duplicate Key Error
-
-```json
-{
-  "success": false,
-  "message": "Duplicate field value: email. Please use a different value.",
-  "data": null,
-  "meta": null
-}
-```
-
----
 
 ## 🛡️ RBAC Protection Flow
 
@@ -959,18 +1091,23 @@ graph LR
 
 ```mermaid
 erDiagram
-    USER ||--o{ ITEM : creates
+    USER ||--o{ MODULE : creates
+    USER ||--o{ COURSE : creates
+    COURSE ||--o{ COURSE_MODULE : contains
+    MODULE ||--o{ COURSE_MODULE : belongs_to
+    
     USER {
         string uid PK
         string email UK
         string displayName
+        string photoURL
         enum role "USER|ADMIN"
         boolean emailVerified
         datetime createdAt
         datetime updatedAt
     }
     
-    ITEM {
+    MODULE {
         string _id PK
         string title
         string shortDescription
@@ -983,7 +1120,28 @@ erDiagram
         datetime updatedAt
     }
     
-    ITEM }o--|| USER : "createdBy references uid"
+    COURSE {
+        string _id PK
+        string title
+        string shortDescription
+        string description
+        string category
+        enum difficulty "beginner|intermediate|advanced"
+        number price
+        string image
+        string createdBy FK
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    COURSE_MODULE {
+        string _id PK
+        string courseId FK
+        string moduleId FK
+        number order
+        datetime createdAt
+        datetime updatedAt
+    }
 ```
 
 ---
@@ -992,7 +1150,7 @@ erDiagram
 
 ```mermaid
 graph TD
-    A[Client Request<br/>GET /api/v1/items?search=react&category=frontend&page=1&limit=10] --> B[Router]
+    A[Client Request<br/>GET /api/v1/modules?search=react&category=frontend&page=1&limit=10] --> B[Router]
     B --> C[Controller]
     C --> D[Service]
     D --> E[Repository]
@@ -1055,27 +1213,27 @@ Permission-based access also supported.
 
 ```js
 authorize("ADMIN", "SUPER_ADMIN")
-authorizePermission("study.delete")
+authorizePermission("course.delete")
 ```
 
 ---
 
-# 📦 Study API (Main Resource)
+# 📦 Course API (Main Resource)
 
 ## Base URL
 
 ```
-/api/v1/studies
+/api/v1/courses
 ```
 
 ---
 
 ## 📌 Endpoints
 
-### 1. Get All Studies
+### 1. Get All Courses
 
 ```
-GET /api/v1/studies
+GET /api/v1/courses
 ```
 
 ### Query Parameters:
@@ -1091,18 +1249,18 @@ GET /api/v1/studies
 
 ---
 
-### 2. Get Single Study
+### 2. Get Single Course
 
 ```
-GET /api/v1/studies/:id
+GET /api/v1/courses/:id
 ```
 
 ---
 
-### 3. Create Study (Protected)
+### 3. Create Course (Protected - Admin only)
 
 ```
-POST /api/v1/studies
+POST /api/v1/courses
 ```
 
 ### Body:
@@ -1111,7 +1269,7 @@ POST /api/v1/studies
 {
   "title": "React Basics",
   "shortDescription": "Learn React fast",
-  "description": "Full module content...",
+  "description": "Full course content...",
   "category": "frontend",
   "difficulty": "beginner",
   "price": 0,
@@ -1122,18 +1280,18 @@ POST /api/v1/studies
 
 ---
 
-### 4. Update Study (Protected)
+### 4. Update Course (Protected - Admin only)
 
 ```
-PATCH /api/v1/studies/:id
+PATCH /api/v1/courses/:id
 ```
 
 ---
 
-### 5. Delete Study (Protected)
+### 5. Delete Course (Protected - Admin only)
 
 ```
-DELETE /api/v1/studies/:id
+DELETE /api/v1/courses/:id
 ```
 
 ---
@@ -1320,8 +1478,10 @@ Required validation:
 GET  /                    Landing page
 GET  /about               About page
 GET  /health              Health check
-GET  /api/v1/items        List all items (with filters)
-GET  /api/v1/items/:id    Get single item
+GET  /api/v1/modules      List all modules (with filters)
+GET  /api/v1/modules/:id  Get single module
+GET  /api/v1/courses      List all courses
+GET  /api/v1/courses/:id  Get single course
 ```
 
 ---
@@ -1331,10 +1491,13 @@ GET  /api/v1/items/:id    Get single item
 **Routes exist but authentication is NOT currently enforced.** These endpoints are open to anyone.
 
 ```
-POST /api/v1/items/add     Create item  (no auth check - placeholder createdBy used)
-PATCH /api/v1/items/:id    Update own item (no auth check)
-DELETE /api/v1/items/:id   Delete own item (no auth check)
-GET  /api/v1/items/manage  Get user's items (returns 'system' user items)
+POST /api/v1/modules/add     Create module (no auth check - placeholder createdBy used)
+PATCH /api/v1/modules/:id    Update own module (no auth check)
+DELETE /api/v1/modules/:id   Delete own module (no auth check)
+GET  /api/v1/modules/manage  Get user's modules (returns 'system' user modules)
+POST /api/v1/courses         Create course (admin only - no auth check)
+PATCH /api/v1/courses/:id    Update course (admin only - no auth check)
+DELETE /api/v1/courses/:id   Delete course (admin only - no auth check)
 ```
 
 **To enable protection:**
@@ -1349,10 +1512,16 @@ GET  /api/v1/items/manage  Get user's items (returns 'system' user items)
 **Routes exist but RBAC is NOT currently enforced.** Anyone can access these endpoints.
 
 ```
-GET  /api/v1/admin/items      View all items
-PATCH /api/v1/admin/items/:id Edit any item
-DELETE /api/v1/admin/items/:id  Delete any item
-GET  /api/v1/admin/users      View all users
+GET  /api/v1/admin/modules                 View all modules
+PATCH /api/v1/admin/modules/:id            Edit any module
+DELETE /api/v1/admin/modules/:id           Delete any module
+GET  /api/v1/admin/courses                 View all courses
+POST /api/v1/admin/courses/:courseId/modules/:moduleId/link   Link module to course
+DELETE /api/v1/admin/courses/:courseId/modules/:moduleId/unlink  Unlink module from course
+GET  /api/v1/admin/courses/:courseId/modules  Get course modules
+POST /api/v1/admin/courses/:courseId/modules/batch/link   Batch link modules
+DELETE /api/v1/admin/courses/:courseId/modules/batch/unlink  Batch unlink modules
+GET  /api/v1/admin/users                  View all users
 ```
 
 **To enable protection:**

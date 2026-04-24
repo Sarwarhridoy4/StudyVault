@@ -7,10 +7,11 @@ import { globalRateLimiter, authRateLimiter, itemRateLimiter } from './middlewar
 import { sanitizeBody } from './middlewares/sanitize';
 import { logger, loggerStream } from './utils/logger';
 import publicRouter from './modules/public/public.route';
-import studyRouter from './modules/study/study.route';
-import itemRouter from './modules/item/item.route';
+import courseRouter from './modules/course/course.route';
+import moduleRouter from './modules/module/module.route';
 import adminRouter from './modules/admin/admin.route';
 import uploadRouter from './modules/upload/upload.route';
+import courseModuleRouter from './modules/coursemodule/coursemodule.route';
 
 const app = express();
 
@@ -71,9 +72,10 @@ app.get('/health', (_req, res) => {
 });
 
 // API Routes
-app.use('/api/v1/studies', studyRouter);
-app.use('/api/v1/items', itemRouter);
+app.use('/api/v1/courses', courseRouter);
+app.use('/api/v1/modules', moduleRouter);
 app.use('/api/v1/admin', adminRouter);
+app.use('/api/v1/coursemodule', courseModuleRouter);
 
 // Upload routes (centralized file upload)
 app.use('/api/v1/upload', uploadRouter);

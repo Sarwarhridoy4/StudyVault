@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const createStudySchema = z.object({
+export const createCourseSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   shortDescription: z.string().min(10, 'Short description must be at least 10 characters'),
   description: z.string().min(20, 'Description must be at least 20 characters'),
@@ -11,7 +11,7 @@ export const createStudySchema = z.object({
   createdBy: z.string().min(1, 'createdBy is required'),
 });
 
-export const updateStudySchema = createStudySchema.partial();
+export const updateCourseSchema = createCourseSchema.partial();
 
-export type CreateStudyInput = z.infer<typeof createStudySchema>;
-export type UpdateStudyInput = z.infer<typeof updateStudySchema>;
+export type CreateCourseInput = z.infer<typeof createCourseSchema>;
+export type UpdateCourseInput = z.infer<typeof updateCourseSchema>;
