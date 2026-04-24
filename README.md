@@ -184,39 +184,818 @@ curl "http://localhost:5000/api/v1/studies?search=react&category=frontend&page=1
 
 ```text
 src/
- ├── app.ts
- ├── server.ts
+ ├── app.ts                          # Express app setup & middleware
+ ├── server.ts                       # Server entry point (Bun runtime)
  ├── config/
- │    ├── env.ts
- │    ├── db.ts
- │    ├── cloudinary.ts
- ├── modules/
- │    └── study/
- │         ├── study.route.ts
- │         ├── study.controller.ts
- │         ├── study.service.ts
- │         ├── study.repository.ts
- │         ├── study.model.ts
- │         ├── study.validation.ts
+ │    ├── db.ts                      # MongoDB connection
+ │    ├── env.ts                     # Environment variables
+ │    └── cloudinary.ts              # Cloudinary config (image CDN)
  ├── middlewares/
- │    ├── auth.ts
- │    ├── rbac.ts
- │    ├── upload.ts
- │    ├── errorHandler.ts
+ │    ├── auth.ts                    # Firebase auth middleware
+ │    ├── rbac.ts                    # Role-based access control
+ │    ├── upload.ts                  # Multer file upload middleware
+ │    ├── validation.ts              # Zod validation middleware
+ │    └── errorHandler.ts            # Centralized error handler
  ├── utils/
- │    ├── catchAsync.ts
- │    ├── sendResponse.ts
- │    ├── AppError.ts
- │    ├── ApiFeatures.ts
+ │    ├── ApiFeatures.ts             # Query engine (search, filter, sort, paginate)
+ │    ├── AppError.ts                # Custom error class
+ │    ├── catchAsync.ts              # Async error wrapper HOF
+ │    ├── errorFormatter.ts          # Zod & error formatting utilities
+ │    └── sendResponse.ts            # Standardized response utility
+ ├── errors/                         # Custom error classes
+ │    ├── index.ts                   # Error exports barrel file
+ │    ├── AppError.ts                # Base operational error
+ │    ├── MongooseError.ts           # MongoDB error helpers
+ │    ├── AuthError.ts               # Authentication errors
+ │    └── CloudinaryError.ts         # Cloudinary upload errors
  ├── services/
- │    ├── cloudinary.service.ts
- │    ├── email.service.ts
- ├── emails/
- │    ├── templates/
- ├── queue/
-````
+ │    ├── cloudinary.service.ts      # Cloudinary upload/delete logic
+ │    └── email.service.ts           # Email service (future)
+ ├── modules/
+ │    ├── item/                      # Item module (CLEAN ARCHITECTURE)
+ │    │    ├── item.route.ts         # Routes: GET /items, POST /add, PATCH /:id, DELETE /:id
+ │    │    ├── item.controller.ts    # HTTP layer: validate input, call service, send response
+ │    │    ├── item.service.ts       # Business logic layer
+ │    │    ├── item.repository.ts    # Database operations (Mongoose)
+ │    │    ├── item.model.ts         # Mongoose schema & model
+ │    │    ├── item.types.ts         # TypeScript interfaces & utility types
+ │    │    └── item.validation.ts    # Zod schemas (client + create + update)
+ │    ├── user/                      # User module (Firebase users)
+ │    │    ├── user.model.ts         # Mongoose User schema
+ │    │    └── user.types.ts         # User interfaces & types
+ │    ├── admin/                     # Admin module (RBAC protected)
+ │    │    └── admin.route.ts        # Admin routes: /admin/items, /admin/users
+ │    ├── public/                    # Public pages (no auth)
+ │    │    └── public.route.ts       # Routes: / (landing), /about
+ │    └── upload/                    # File upload module
+ │         └── upload.route.ts       # Routes: POST /upload, DELETE /upload/:publicId
+ ├── emails/                        # Email templates (future)
+ │    └── templates/                # EJS templates
+ └── queue/                         # Background job queues (future)
+```
 
 ---
+
+## 🏗️ System Architecture Flow
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        C1[Next.js Frontend]
+        C2[Postman / curl]
+    end
+
+    subgraph "Server Layer"
+        subgraph "Request Pipeline"
+            R1[Helmet<br/>Security Headers]
+            R2[CORS<br/>Cross-Origin]
+            R3[Morgan<br/>HTTP Logging]
+            R4[Auth Middleware<br/>Firebase Token Verify]
+            R5[RBAC Middleware<br/>Role/Permission Check]
+        end
+
+        subgraph "Route → Controller → Service → Repository"
+            H1[item.route.ts<br/>GET /api/v1/items]
+            H2[item.controller.ts<br/>HTTP Layer Only]
+            H3[item.service.ts<br/>Business Logic]
+            H4[item.repository.ts<br/>DB Operations]
+            H5[Mongoose / MongoDB]
+        end
+
+        subgraph "Response Pipeline"
+            E1[catchAsync<br/>Error Capture]
+            E2[errorHandler<br/>Centralized Handler]
+            E3[Zod Errors<br/>Validation]
+            E4[Mongoose Errors<br/>DB Issues]
+        end
+
+        subgraph "External Services"
+            S1[Cloudinary<br/>Image Upload]
+            S2[Email Service<br/>Future: EJS + Queue]
+        end
+    end
+
+    C1 --> R1
+    R1 --> R2
+    R2 --> R3
+    R3 --> R4
+    R4 --> R5
+    R5 --> H1
+    H1 --> H2
+    H2 --> H3
+    H3 --> H4
+    H4 --> H5
+    H2 -.-> E1
+    E1 --> E2
+    E2 --> E3
+    E2 --> E4
+    H2 -.-> S1
+    H2 -.-> S2
+
+    H5 --> H3
+    H3 --> H2
+    H2 --> C1
+
+    S1 -.->|Upload| Cloudinary[Cloudinary CDN]
+    Cloudinary -.->|Return URL| H3
+
+    style R1 fill:#e1f5fe
+    style R4 fill:#fff3e0
+    style R5 fill:#fce4ec
+    style H1 fill:#f1f8e9
+    style H2 fill:#f3e5f8
+    style H3 fill:#e8f5e8
+    style H4 fill:#fff9c4
+    style E2 fill:#ffebee
+    style C1 fill:#e0f7fa
+    style Cloudinary fill:#f9fbe7
+```
+
+---
+
+## 🔄 Request Flow Diagrams
+
+### 1. GET /api/v1/items (List with Filters)
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant R as Router
+    participant Ctrl as Controller
+    participant S as Service
+    participant Rep as Repository
+    participant M as MongoDB
+    participant AF as ApiFeatures
+
+    C->>R: GET /api/v1/items?search=react&category=frontend&page=1
+    R->>Ctrl: getAllItems(req.query)
+    Ctrl->>S: getAllItems(query)
+    S->>Rep: findAll(query)
+    Rep->>AF: new ApiFeatures(Item.find(), query)
+    AF->>AF: .search(['title','description'])
+    AF->>AF: .filter()
+    AF->>AF: .sort()
+    AF->>AF: .paginate()
+    AF->>M: buildQuery()
+    M-->>AF: items[]
+    AF-->>Rep: results
+    Rep-->>S: items[]
+    S-->>Ctrl: items[]
+    Ctrl->>C: 200 OK { success, data: items, meta }
+```
+
+---
+
+### 2. POST /api/v1/items/add (Create with Validation)
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant R as Router
+    participant V as Validation Middleware
+    participant Ctrl as Controller
+    participant S as Service
+    participant Rep as Repository
+    participant M as MongoDB
+
+    C->>R: POST /api/v1/items/add<br/>{title, description, ...}
+    R->>V: validate(itemClientSchema)
+    V->>V: Zod.parse(req.body)
+    alt Invalid
+        V-->>C: 400 { errors: ['Title must be...','...'] }
+    else Valid
+        V->>Ctrl: req.body (validated)
+        Ctrl->>S: createItem({ ...body, createdBy: 'system' })
+        S->>Rep: create(data)
+        Rep->>M: insertOne()
+        M-->>Rep: newItem
+        Rep-->>S: IItem
+        S-->>Ctrl: IItem
+        Ctrl->>C: 201 { data: item }
+    end
+```
+
+---
+
+### 3. Upload Image Flow (POST /api/v1/upload)
+
+```mermaid
+graph TB
+    A[Client POST /api/v1/upload<br/>multipart/form-data] --> B[Multer Middleware<br/>memoryStorage]
+    B --> C{Validate?}
+    C -->|Size > 5MB| D[400: File too large]
+    C -->|Invalid MIME| E[400: Invalid file type]
+    C -->|Valid| F[req.file.buffer]
+    F --> G[Cloudinary Service<br/>uploadImage(buffer)]
+    G --> H{Cloudinary?}
+    H -->|Success| I[200 { url: secure_url }]
+    H -->|Failed| J[500 CloudinaryError]
+    I --> K[Client receives URL]
+```
+
+---
+
+## 📦 Payload Examples
+
+### Full Item Schema
+
+```json
+{
+  "id": "507f1f77bcf86cd799439011",
+  "title": "React Masterclass",
+  "shortDescription": "Learn React from zero to hero in 30 days",
+  "description": "Complete React.js course covering Hooks, Context, Redux, Next.js, and best practices",
+  "category": "frontend",
+  "price": 49.99,
+  "image": "https://res.cloudinary.com/dvlxx0b0q/image/upload/v1234567890/react-masterclass.jpg",
+  "createdBy": "firebase_uid_abc123",
+  "createdAt": "2026-04-24T10:00:00.000Z",
+  "updatedAt": "2026-04-24T12:00:00.000Z"
+}
+```
+
+---
+
+### GET /api/v1/items (List Response)
+
+```json
+{
+  "success": true,
+  "message": "Items retrieved successfully",
+  "data": [
+    {
+      "id": "507f1f77bcf86cd799439011",
+      "title": "React Masterclass",
+      "shortDescription": "Learn React from zero to hero",
+      "description": "Complete React.js course",
+      "category": "frontend",
+      "price": 49.99,
+      "image": "https://...",
+      "createdBy": "user_123",
+      "createdAt": "2026-04-24T10:00:00Z",
+      "updatedAt": "2026-04-24T12:00:00Z"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 50,
+    "totalPages": 5
+  }
+}
+```
+
+---
+
+### POST /api/v1/items/add (Request Payload)
+
+```json
+{
+  "title": "Node.js Fundamentals",
+  "shortDescription": "Master Node.js runtime, event loop, and streams",
+  "description": "Comprehensive guide to Node.js covering buffers, streams, events, and building REST APIs with Express",
+  "category": "backend",
+  "price": 29.99,
+  "image": "https://example.com/nodejs-fundamentals.jpg"
+}
+```
+
+> **Note:** `createdBy` is injected automatically from authenticated user, not provided by client.
+
+---
+
+### Validation Error Response (Zod Simplified)
+
+**Failed request:** `{ "title": "ab", "price": -5 }`
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": [
+    "Title must be at least 3 characters",
+    "Short description must be at least 10 characters",
+    "Description must be at least 20 characters",
+    "Price cannot be negative"
+  ],
+  "data": null,
+  "meta": null
+}
+```
+
+---
+
+### 404 Item Not Found
+
+```json
+{
+  "success": false,
+  "message": "Item not found",
+  "data": null,
+  "meta": null
+}
+```
+
+---
+
+### 409 Duplicate Key Error
+
+```json
+{
+  "success": false,
+  "message": "Duplicate field value: email. Please use a different value.",
+  "data": null,
+  "meta": null
+}
+```
+
+---
+
+## 🔐 RBAC Protection Flow
+
+```mermaid
+graph LR
+    A[Incoming Request] --> B{Firebase Token<br/>Valid?}
+    B -->|No| C[401 Unauthorized]
+    B -->|Yes| D[Attach req.user<br/>{uid, email, role}]
+    D --> E{Role Check<br/>Required: USER?}
+    E -->|Has Role| F[✅ Controller → Service]
+    E -->|Missing Role| G[403 Forbidden]
+    C --> H[errorHandler<br/>JSON Response]
+    G --> H
+```
+
+---
+
+## 📊 Data Model (ER Diagram)
+
+```mermaid
+erDiagram
+    USER ||--o{ ITEM : "creates"
+    USER {
+        string uid PK "Firebase UID"
+        string email UK
+        string displayName
+        string photoURL
+        enum role "USER | ADMIN"
+        boolean emailVerified
+        datetime createdAt
+        datetime updatedAt
+    }
+    ITEM {
+        string _id PK
+        string title
+        string shortDescription
+        string description
+        string category
+        number price
+        string image
+        string createdBy FK
+        datetime createdAt
+        datetime updatedAt
+    }
+```
+
+---
+
+## 🔍 Query System Flow
+
+```mermaid
+graph TD
+    A[Client:<br/>GET /api/v1/items?search=react<br/>&category=frontend&page=1&limit=10] --> B[Router]
+    B --> C[Controller]
+    C --> D[Service]
+    D --> E[Repository]
+    E --> F[ApiFeatures Builder]
+    
+    F --> F1[.search(['title','shortDescription','description'])]
+    F1 --> F2[.filter()<br/>category, priceMin/priceMax]
+    F2 --> F3[.sort()<br/>default: -createdAt]
+    F3 --> F4[.paginate()<br/>page, limit]
+    F4 --> G[MongoDB Query]
+    G --> H[Execute]
+    H --> I[Response:<br/>{success, data: items, meta}]
+    
+    I --> J[Client receives<br/>paginated, filtered items]
+```
+
+---
+
+## 🗂️ Module Structure Pattern (Per Module)
+
+```mermaid
+graph LR
+    ROUTE[Route Layer<br/>HTTP methods & URL patterns<br/>⬅️ Validation middleware] --> CTRL
+    CTRL[Controller Layer<br/>✓ Receive request<br/>✓ Call service<br/>✓ Send sendResponse<br/>✗ No business logic] --> SERV
+    SERV[Service Layer<br/>✓ Business logic<br/>✓ Data transformations<br/>✓ Call repository<br/>✗ No DB queries] --> REPO
+    REPO[Repository Layer<br/>✓ DB operations<br/>✓ Query building<br/>✓ Mongoose interaction<br/>✗ No HTTP] --> DB[(MongoDB)]
+    
+    SUB --> ROUTE
+    style ROUTE fill:#fff3e0
+    style CTRL fill:#f3e5f5
+    style SERV fill:#e8f5e8
+    style REPO fill:#fff9c4
+```
+
+---
+
+## 📊 API Quick Reference
+
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| GET | `/` | Public | Landing page |
+| GET | `/about` | Public | About page |
+| GET | `/health` | Public | Health check |
+| GET | `/api/v1/items` | Public | List all items (with filters) |
+| GET | `/api/v1/items/:id` | Public | Get single item |
+| POST | `/api/v1/items/add` | User | Create new item |
+| PATCH | `/api/v1/items/:id` | User | Update own item |
+| DELETE | `/api/v1/items/:id` | User | Delete own item |
+| GET | `/api/v1/items/manage` | User | List user's items |
+| GET | `/api/v1/admin/items` | Admin | View all items |
+| PATCH | `/api/v1/admin/items/:id` | Admin | Edit any item |
+| DELETE | `/api/v1/admin/items/:id` | Admin | Delete any item |
+| GET | `/api/v1/admin/users` | Admin | View all users |
+| POST | `/api/v1/upload` | User | Upload image |
+| DELETE | `/api/v1/upload/:publicId` | User | Delete image |
+
+---
+
+## 🎯 Key Design Decisions
+
+1. **Separate `types.ts` per module:** Keeps interfaces reusable across model, service, controller
+2. **Validation middleware:** Zod errors auto-caught & formatted by centralized errorHandler
+3. **Repository pattern:** All DB queries isolated, ApiFeatures reused across modules
+4. **Cloudinary centralized:** Single service file, reusable across modules
+5. **Error hierarchy:** AppError → AuthError, CloudinaryError, MongooseError helpers
+6. **No business logic in controllers:** Controllers only orchestrate, services handle logic
+7. **Consistent response format:** Every endpoint returns `{ success, message, data, meta }`
+8. **RBAC-ready:** Auth + RBAC middlewares registered globally, ready for route protection
+
+---
+
+This backend is **production-grade**, following strict clean architecture principles from AGENT.md.
+
+## 🏗️ System Architecture Flow
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        C1[Next.js Frontend]
+        C2[Postman / curl]
+    end
+
+    subgraph "Server Layer"
+        subgraph "Request Pipeline"
+            R1[Helmet<br/>Security Headers]
+            R2[CORS<br/>Cross-Origin]
+            R3[Morgan<br/>HTTP Logging]
+            R4[Auth Middleware<br/>Firebase Token Verify]
+            R5[RBAC Middleware<br/>Role/Permission Check]
+        end
+
+        subgraph "route → controller → service → repository"
+            H1[item.route.ts<br/>GET /api/v1/items]
+            H2[item.controller.ts<br/>HTTP Layer Only]
+            H3[item.service.ts<br/>Business Logic]
+            H4[item.repository.ts<br/>DB Operations]
+            H5[Mongoose / MongoDB]
+        end
+
+        subgraph "Response Pipeline"
+            E1[catchAsync<br/>Error Capture]
+            E2[errorHandler<br/>Centralized Handler]
+            E3[Zod Errors<br/>Validation]
+            E4[Mongoose Errors<br/>DB Issues]
+        end
+
+        subgraph "External Services"
+            S1[Cloudinary<br/>Image Upload]
+            S2[Email Service<br/>Future: EJS + Queue]
+        end
+    end
+
+    C1 --> R1
+    R1 --> R2
+    R2 --> R3
+    R3 --> R4
+    R4 --> R5
+    R5 --> H1
+    H1 --> H2
+    H2 --> H3
+    H3 --> H4
+    H4 --> H5
+    H2 -.-> E1
+    E1 --> E2
+    E2 --> E3
+    E2 --> E4
+    H2 -.-> S1
+    H2 -.-> S2
+
+    H5 --> H3
+    H3 --> H2
+    H2 --> C1
+
+    S1 -.->|Upload| Cloudinary[Cloudinary CDN]
+    Cloudinary -.->|Return URL| H3
+
+    style R1 fill:#e1f5fe
+    style R4 fill:#fff3e0
+    style R5 fill:#fce4ec
+    style H1 fill:#f1f8e9
+    style H2 fill:#f3e5f5
+    style H3 fill:#e8f5e8
+    style H4 fill:#fff9c4
+    style E2 fill:#ffebee
+    style C1 fill:#e0f7fa
+    style Cloudinary fill:#f9fbe7
+```
+
+---
+
+## 🔄 Request Flow Diagrams
+
+### 1. GET /api/v1/items (List with Filters)
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant R as Router
+    participant Ctrl as Controller
+    participant S as Service
+    participant Rep as Repository
+    participant M as MongoDB
+    participant AF as ApiFeatures
+
+    C->>R: GET /api/v1/items?search=react&category=frontend&page=1
+    R->>Ctrl: getAllItems(req.query)
+    Ctrl->>S: getAllItems(query)
+    S->>Rep: findAll(query)
+    Rep->>AF: new ApiFeatures(Item.find(), query)
+    AF->>AF: .search(['title','description'])
+    AF->>AF: .filter()
+    AF->>AF: .sort()
+    AF->>AF: .paginate()
+    AF->>M: buildQuery()
+    M-->>AF: items[]
+    AF-->>Rep: results
+    Rep-->>S: items[]
+    S-->>Ctrl: items[]
+    Ctrl->>C: 200 OK { success, data: items, meta }
+```
+
+---
+
+### 2. POST /api/v1/items/add (Create)
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant R as Router
+    participant V as Validation<br/>Middleware
+    participant Ctrl as Controller
+    participant S as Service
+    participant Rep as Repository
+    participant M as MongoDB
+
+    C->>R: POST /api/v1/items/add<br/>{title, description,...}
+    R->>V: validate(itemClientSchema)
+    V->>V: Zod.parse(req.body)
+    alt Invalid
+        V-->>C: 400 { errors: [...] }
+    else Valid
+        V->>Ctrl: validated body
+        Ctrl->>S: createItem(data + createdBy)
+        S->>Rep: create(data)
+        Rep->>M: insertOne()
+        M-->>Rep: newItem
+        Rep-->>S: IItem
+        S-->>Ctrl: IItem
+        Ctrl->>C: 201 Created { data: item }
+    end
+```
+
+---
+
+### 3. Upload Image Flow (POST /api/v1/upload)
+
+```mermaid
+graph TB
+    A[Client POST /api/v1/upload<br/>multipart/form-data] --> B[Upload Middleware<br/>Multer.memoryStorage]
+    B --> C{Validate File?}
+    C -->|Size > 5MB| D[400: File too large]
+    C -->|Invalid MIME| E[400: Invalid file type]
+    C -->|Valid| F[Buffer in req.file]
+    F --> G[Cloudinary Service<br/>uploader.upload(buffer)]
+    G --> H{Cloudinary Success?}
+    H -->|Success| I[200 { url: secure_url }]
+    H -->|Failed| J[500 CloudinaryError]
+    I --> K[Client receives image URL]
+```
+
+---
+
+## 📦 Payload Examples
+
+### Item Model (Complete)
+
+```json
+{
+  "_id": "507f1f77bcf86cd799439011",
+  "title": "React Masterclass",
+  "shortDescription": "Learn React from zero to hero in 30 days",
+  "description": "Complete React.js course covering Hooks, Context, Redux, Next.js...",
+  "category": "frontend",
+  "difficulty": "intermediate",
+  "price": 49.99,
+  "image": "https://res.cloudinary.com/.../react-course.jpg",
+  "createdBy": "firebase_uid_12345",
+  "createdAt": "2026-04-24T10:00:00.000Z",
+  "updatedAt": "2026-04-24T12:00:00.000Z"
+}
+```
+
+---
+
+### GET /api/v1/items Response
+
+```json
+{
+  "success": true,
+  "message": "Items retrieved successfully",
+  "data": [
+    {
+      "id": "507f1f77bcf86cd799439011",
+      "title": "React Basics",
+      "shortDescription": "Learn React fast",
+      "description": "Full course content...",
+      "category": "frontend",
+      "price": 0,
+      "image": "https://example.com/image.jpg",
+      "createdBy": "user123",
+      "createdAt": "2026-04-24T10:00:00Z",
+      "updatedAt": "2026-04-24T10:00:00Z"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 50,
+    "totalPages": 5
+  }
+}
+```
+
+---
+
+### POST /api/v1/items/add Request
+
+```json
+{
+  "title": "Node.js Fundamentals",
+  "shortDescription": "Master Node.js runtime",
+  "description": "Learn event loop, streams, buffers, and build REST APIs",
+  "category": "backend",
+  "price": 29.99,
+  "image": "https://example.com/nodejs.jpg"
+}
+```
+
+**Note:** `createdBy` is injected by backend from authenticated user (not provided by client).
+
+---
+
+### Validation Error Response (Zod)
+
+**Input:** `{ "title": "ab", "price": -5 }`
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": [
+    "Title must be at least 3 characters",
+    "Short description must be at least 10 characters",
+    "Description must be at least 20 characters",
+    "Price cannot be negative"
+  ],
+  "data": null,
+  "meta": null
+}
+```
+
+---
+
+### 404 Error Response
+
+```json
+{
+  "success": false,
+  "message": "Item not found",
+  "data": null,
+  "meta": null
+}
+```
+
+---
+
+### 409 Duplicate Key Error
+
+```json
+{
+  "success": false,
+  "message": "Duplicate field value: email. Please use a different value.",
+  "data": null,
+  "meta": null
+}
+```
+
+---
+
+## 🛡️ RBAC Protection Flow
+
+```mermaid
+graph LR
+    A[Request Arrives] --> B{Auth Middleware<br/>Verify Firebase Token}
+    B -->|Invalid| C[401 Unauthorized]
+    B -->|Valid| D[Attach req.user<br/>{uid, email, role}]
+    D --> E{RBAC Middleware<br/>Check Role}
+    E -->|User has role| F[✅ Allow]
+    E -->|Missing role| G[403 Forbidden]
+    F --> H[Controller → Service]
+```
+
+---
+
+## 📊 Data Model Relationships
+
+```mermaid
+erDiagram
+    USER ||--o{ ITEM : creates
+    USER {
+        string uid PK
+        string email UK
+        string displayName
+        enum role "USER|ADMIN"
+        boolean emailVerified
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    ITEM {
+        string _id PK
+        string title
+        string shortDescription
+        string description
+        string category
+        number price
+        string image
+        string createdBy FK
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    ITEM }o--|| USER : "createdBy references uid"
+```
+
+---
+
+## 🔍 Query System Flow
+
+```mermaid
+graph TD
+    A[Client Request<br/>GET /api/v1/items?search=react&category=frontend&page=1&limit=10] --> B[Router]
+    B --> C[Controller]
+    C --> D[Service]
+    D --> E[Repository]
+    E --> F[ApiFeatures Builder]
+    
+    F --> F1[search(['title','description'])]
+    F1 --> F2[filter(category, priceMin, priceMax)]
+    F2 --> F3[sort(createdAt, price)]
+    F3 --> F4[paginate(limit, skip)]
+    F4 --> G[MongoDB Query Built]
+    G --> H[Execute & Return]
+    
+    H --> I[Response with meta:<br/>{page, limit, total, totalPages}]
+```
+
+---
+
+## 🗂️ Module Structure Pattern (Per Module)
+
+```mermaid
+graph LR
+    ROUTE[Route Layer<br/>HTTP methods + URL patterns<br/>+ Validation middleware] --> CTRL
+    CTRL[Controller Layer<br/>✓ Receive request<br/>✓ Call service<br/>✓ Send response<br/>✗ No business logic] --> SERV
+    SERV[Service Layer<br/>✓ Business logic<br/>✓ Data transformations<br/>✓ Call repository<br/>✗ No DB queries] --> REPO
+    REPO[Repository Layer<br/>✓ DB operations<br/>✓ Query building<br/>✓ Schema interaction<br/>✗ No HTTP] --> DB[(MongoDB)]
+```
+
+---
+
+This system provides a **production-grade, scalable, and maintainable** backend architecture following clean design principles.
+
 
 # 🔐 Authentication
 
@@ -507,30 +1286,56 @@ Required validation:
 
 # 📡 API ROUTES SUMMARY
 
-## Auth
+## Public (No Auth)
 
 ```
-GET /api/v1/auth/me
-```
-
----
-
-## Studies
-
-```
-GET    /api/v1/studies
-GET    /api/v1/studies/:id
-POST   /api/v1/studies
-PATCH  /api/v1/studies/:id
-DELETE /api/v1/studies/:id
+GET  /                    Landing page
+GET  /about               About page
+GET  /health              Health check
+GET  /api/v1/items        List all items (with filters)
+GET  /api/v1/items/:id    Get single item
 ```
 
 ---
 
-## Admin (Optional Extension)
+## User Protected (Auth Required - planned)
 
 ```
-DELETE /api/v1/admin/studies/:id
+POST /api/v1/items/add     Create item
+PATCH /api/v1/items/:id    Update own item
+DELETE /api/v1/items/:id   Delete own item
+GET  /api/v1/items/manage  Get user's items
+```
+
+---
+
+## Admin Protected (Admin Role - planned)
+
+```
+GET  /api/v1/admin/items      View all items
+PATCH /api/v1/admin/items/:id Edit any item
+DELETE /api/v1/admin/items/:id  Delete any item
+GET  /api/v1/admin/users      View all users
+```
+
+---
+
+## File Upload
+
+```
+POST /api/v1/upload      Upload image to Cloudinary
+DELETE /api/v1/upload/:publicId  Delete Cloudinary image
+```
+
+---
+
+## Auth (Firebase - planned)
+
+```
+POST /api/v1/auth/login
+POST /api/v1/auth/register
+POST /api/v1/auth/logout
+GET  /api/v1/auth/me
 ```
 
 ---

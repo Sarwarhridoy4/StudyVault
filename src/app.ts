@@ -5,7 +5,11 @@ import morgan from 'morgan';
 import errorHandler from './middlewares/errorHandler';
 import auth from './middlewares/auth';
 import rbac from './middlewares/rbac';
+import publicRouter from './modules/public/public.route';
 import studyRouter from './modules/study/study.route';
+import itemRouter from './modules/item/item.route';
+import adminRouter from './modules/admin/admin.route';
+import uploadRouter from './modules/upload/upload.route';
 
 const app = express();
 
@@ -16,23 +20,8 @@ app.use(morgan('dev'));
 app.use(auth);
 app.use(rbac);
 
-// Root endpoint with welcome message
-app.get('/', (_req, res) => {
-  res.json({
-    success: true,
-    message: 'Welcome to StudyVault Backend API',
-    name: 'StudyVault API',
-    version: '1.0.0',
-    environment: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString(),
-    endpoints: {
-      health: '/health',
-      api: '/api/v1',
-      studies: '/api/v1/studies',
-    },
-    documentation: 'See README.md for complete API documentation',
-  });
-});
+// Public routes (landing page and about)
+app.use('/', publicRouter);
 
 // Health check endpoint with system info
 app.get('/health', (_req, res) => {
@@ -52,12 +41,21 @@ app.get('/health', (_req, res) => {
       pid: process.pid,
     },
   };
-  
+
   res.json(healthData);
 });
 
+
 // API Routes
 app.use('/api/v1/studies', studyRouter);
+app.use('/api/v1/items', itemRouter);
+app.use('/api/v1/admin', adminRouter);
+
+// Upload routes (centralized file upload)
+app.use('/api/v1/upload', uploadRouter);
+
+// Auth routes (to be implemented)
+// app.use('/api/v1/auth', authRouter);
 
 app.use(errorHandler);
 

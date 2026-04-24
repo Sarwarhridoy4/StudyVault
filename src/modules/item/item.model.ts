@@ -26,3 +26,5 @@ ItemSchema.index({ createdBy: 1 }); // Finding user's items
 const Item = mongoose.model<IItem>('Item', ItemSchema);
 
 export default Item;
+export type { IItem } from './item.types';
+export type { ItemCreateInput, ItemUpdateInput, ItemResponse } from './item.types';
