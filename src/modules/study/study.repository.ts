@@ -21,7 +21,7 @@ export const StudyRepository = {
   },
 
   updateById: async (id: string, data: Partial<IStudy>): Promise<IStudy | null> => {
-    return await Study.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+    return await Study.findByIdAndUpdate(id, data, { returnDocument: 'after', runValidators: true });
   },
 
   deleteById: async (id: string): Promise<IStudy | null> => {

@@ -21,7 +21,7 @@ export const itemRepository = {
   },
 
   updateById: async (id: string, data: Partial<IItem>): Promise<IItem | null> => {
-    return await Item.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+    return await Item.findByIdAndUpdate(id, data, { returnDocument: 'after', runValidators: true });
   },
 
   deleteById: async (id: string): Promise<IItem | null> => {
