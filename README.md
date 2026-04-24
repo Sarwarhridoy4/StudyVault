@@ -33,35 +33,149 @@ Built with :contentReference[oaicite:0]{index=0}
 
 ---
 
+# 🚀 Usage Instructions
+
+## Prerequisites
+
+- **Bun** (v1.0 or higher) - [Install Bun](https://bun.sh/docs/installation)
+- **MongoDB** (local instance or MongoDB Atlas)
+- **Node.js** (optional, if not using Bun)
+
+## Installation
+
+```bash
+# Clone the repository
+git clone git@github.com:Sarwarhridoy4/StudyVault.git
+cd StudyVault/server
+
+# Install dependencies
+bun install
+```
+
+## Environment Setup
+
+1. Copy the example environment file:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Update `.env` with your configuration:
+   ```env
+   PORT=5000
+   NODE_ENV=development
+   MONGO_URI=mongodb://localhost:27017/studyvault
+   FIREBASE_PROJECT_ID=your_firebase_project_id
+   FIREBASE_CLIENT_EMAIL=your_firebase_client_email
+   FIREBASE_PRIVATE_KEY=your_firebase_private_key
+   CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
+   CLOUDINARY_API_KEY=your_cloudinary_api_key
+   CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+   ```
+
+## Running the Server
+
+### Development Mode (with hot reload)
+```bash
+bun run dev
+```
+Uses nodemon to watch for changes and auto-restart.
+
+### Production Mode
+```bash
+bun run start
+```
+
+### Build for Production
+```bash
+bun run build
+```
+
+## Verifying the Installation
+
+Once the server is running, test the health endpoint:
+```bash
+curl http://localhost:5000/health
+```
+Expected response: `OK`
+
+## API Testing
+
+### Get All Studies
+```bash
+curl http://localhost:5000/api/v1/studies
+```
+
+### Create a Study (Protected - requires auth)
+```bash
+curl -X POST http://localhost:5000/api/v1/studies \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "React Basics",
+    "shortDescription": "Learn React fast",
+    "description": "Complete React course for beginners",
+    "category": "frontend",
+    "difficulty": "beginner",
+    "price": 0,
+    "image": "https://example.com/image.jpg",
+    "createdBy": "userId"
+  }'
+```
+
+### Search with Filters
+```bash
+curl "http://localhost:5000/api/v1/studies?search=react&category=frontend&page=1&limit=10"
+```
+
+## Tech Stack
+
+| Technology | Purpose |
+|------------|---------|
+| **Bun** | Runtime environment |
+| **TypeScript** | Programming language |
+| **Express.js** | Web framework |
+| **Mongoose** | MongoDB ODM |
+| **Zod** | Schema validation |
+| **Helmet** | Security headers |
+| **CORS** | Cross-origin resource sharing |
+| **Morgan** | HTTP request logger |
+| **Nodemon** | Development auto-reload |
+
+---
+
 # 📁 Project Structure
 
 ```text
 src/
- ├── app.js
- ├── server.js
+ ├── app.ts
+ ├── server.ts
  ├── config/
+ │    ├── env.ts
+ │    ├── db.ts
+ │    ├── cloudinary.ts
  ├── modules/
  │    └── study/
- │         ├── study.route.js
- │         ├── study.controller.js
- │         ├── study.service.js
- │         ├── study.model.js
- │         ├── study.validation.js
+ │         ├── study.route.ts
+ │         ├── study.controller.ts
+ │         ├── study.service.ts
+ │         ├── study.repository.ts
+ │         ├── study.model.ts
+ │         ├── study.validation.ts
  ├── middlewares/
- │    ├── auth.js
- │    ├── rbac.js
- │    ├── upload.js
- │    ├── errorHandler.js
+ │    ├── auth.ts
+ │    ├── rbac.ts
+ │    ├── upload.ts
+ │    ├── errorHandler.ts
  ├── utils/
- │    ├── catchAsync.js
- │    ├── sendResponse.js
- │    ├── AppError.js
- │    ├── ApiFeatures.js
+ │    ├── catchAsync.ts
+ │    ├── sendResponse.ts
+ │    ├── AppError.ts
+ │    ├── ApiFeatures.ts
  ├── services/
- │    ├── cloudinary.service.js
+ │    ├── cloudinary.service.ts
+ │    ├── email.service.ts
  ├── emails/
+ │    ├── templates/
  ├── queue/
- ├── routes/
 ````
 
 ---
