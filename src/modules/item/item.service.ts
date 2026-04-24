@@ -1,4 +1,5 @@
 import { itemRepository } from './item.repository';
+import AppError from '../../utils/AppError';
 import type { ItemCreateInput, ItemUpdateInput } from './item.validation';
 import type { IItem } from './item.model';
 
@@ -10,7 +11,7 @@ export const itemService = {
   getItemById: async (id: string): Promise<IItem | null> => {
     const item = await itemRepository.findById(id);
     if (!item) {
-      throw new Error('Item not found');
+      throw new AppError('Item not found', 404);
     }
     return item;
   },
@@ -22,7 +23,7 @@ export const itemService = {
   updateItem: async (id: string, data: ItemUpdateInput): Promise<IItem | null> => {
     const existing = await itemRepository.findById(id);
     if (!existing) {
-      throw new Error('Item not found');
+      throw new AppError('Item not found', 404);
     }
     return itemRepository.updateById(id, data);
   },
@@ -30,7 +31,7 @@ export const itemService = {
   deleteItem: async (id: string): Promise<IItem | null> => {
     const existing = await itemRepository.findById(id);
     if (!existing) {
-      throw new Error('Item not found');
+      throw new AppError('Item not found', 404);
     }
     return itemRepository.deleteById(id);
   },

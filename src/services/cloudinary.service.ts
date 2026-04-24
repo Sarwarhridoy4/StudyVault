@@ -1,4 +1,5 @@
 import cloudinary from '../config/cloudinary';
+import CloudinaryError from '../errors/CloudinaryError';
 
 // Accept Buffer for direct upload, or string URL for remote fetch
 export const uploadImage = async (file: Buffer | string, folder: string = 'studyvault'): Promise<string> => {
@@ -17,7 +18,7 @@ export const uploadImage = async (file: Buffer | string, folder: string = 'study
     return result.secure_url;
   } catch (error) {
     console.error('Cloudinary upload error:', error);
-    throw new Error('Image upload failed');
+    throw new CloudinaryError('Image upload failed');
   }
 };
 
@@ -26,6 +27,6 @@ export const deleteImage = async (publicId: string): Promise<void> => {
     await cloudinary.uploader.destroy(publicId);
   } catch (error) {
     console.error('Cloudinary delete error:', error);
-    throw new Error('Image deletion failed');
+    throw new CloudinaryError('Image deletion failed');
   }
 };
