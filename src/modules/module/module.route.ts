@@ -7,6 +7,8 @@ import { moduleClientSchema, moduleUpdateSchema } from './module.validation';
 const router = Router();
 
 // Public routes (no auth required)
+// IMPORTANT: /manage must come BEFORE /:id to avoid route conflict
+router.get('/manage', moduleController.getUserModules);
 router.get('/', moduleController.getAllModules);
 router.get('/:id', moduleController.getModuleById);
 
@@ -26,6 +28,5 @@ router.patch(
 );
 
 router.delete('/:id', moduleController.deleteModule);
-router.get('/manage', moduleController.getUserModules);
 
 export default router;

@@ -6,7 +6,7 @@ export const createCourseSchema = z.object({
   description: z.string().min(20, 'Description must be at least 20 characters'),
   category: z.string().min(1, 'Category is required'),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
-  price: z.number().min(0, 'Price must be non-negative'),
+  price: z.coerce.number().min(0, 'Price must be non-negative'),
   image: z.string().url('Image must be a valid URL').optional(),
   createdBy: z.string().min(1, 'createdBy is required'),
 });

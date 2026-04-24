@@ -1,5 +1,6 @@
 import cloudinary from '../config/cloudinary';
 import CloudinaryError from '../errors/CloudinaryError';
+import { Readable } from 'stream';
 
 // Accept Buffer for direct upload, or string URL for remote fetch
 export const uploadImage = async (file: Buffer | string, folder: string = 'studyvault'): Promise<string> => {
@@ -14,7 +15,23 @@ export const uploadImage = async (file: Buffer | string, folder: string = 'study
       ],
     };
 
-    const result = await (cloudinary.uploader.upload as (file: Buffer | string, options?: any) => Promise<any>)(file, uploadOptions);
+    let result: any;
+
+    if (Buffer.isBuffer(file)) {
+      // Upload from Buffer using upload_stream
+      const stream = Readable.from(file);
+      result = await new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(uploadOptions, (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        });
+        stream.pipe(uploadStream);
+      });
+    } else {
+      // Upload from file path or URL using regular upload
+      result = await cloudinary.uploader.upload(file, uploadOptions);
+    }
+
     return result.secure_url;
   } catch (error) {
     console.error('Cloudinary upload error:', error);
