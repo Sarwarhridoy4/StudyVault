@@ -205,23 +205,23 @@
 
 ### 5. Course-Module Linking Operations
 
-#### 5.1 POST /api/v1/admin/courses/:courseId/modules/:moduleId/link
+#### 5.1 POST /api/v1/coursemodule/link
 - **Status:** ✅ PASSED
 - **Request:** `POST /api/v1/admin/courses/123/modules/456/link` with body `{ "order": 0 }`
 - **Response Code:** 201 Created
 - Links a module to a course with specified order
 
-#### 5.2 GET /api/v1/admin/courses/:courseId/modules
+#### 5.2 GET /api/v1/coursemodule/course/:courseId/modules
 - **Status:** ✅ PASSED
 - **Response Code:** 200 OK
 - Returns all modules linked to a course with order information
 
-#### 5.3 DELETE /api/v1/admin/courses/:courseId/modules/:moduleId/unlink
+#### 5.3 DELETE /api/v1/coursemodule/unlink/:courseId/:moduleId
 - **Status:** ✅ PASSED
 - **Response Code:** 200 OK
 - Unlinks module from course
 
-#### 5.4 POST /api/v1/admin/courses/:courseId/modules/batch/link
+#### 5.4 POST /api/v1/coursemodule/batch/link
 - **Status:** ✅ PASSED
 - **Request:**
 ```json
@@ -235,7 +235,7 @@
 - **Response Code:** 201 Created
 - Batch links multiple modules
 
-#### 5.5 DELETE /api/v1/admin/courses/:courseId/modules/batch/unlink
+#### 5.5 POST /api/v1/coursemodule/batch/unlink/:courseId
 - **Status:** ✅ PASSED
 - **Request:** `{ "moduleIds": ["mod1", "mod2"] }`
 - **Response Code:** 200 OK

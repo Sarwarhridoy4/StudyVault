@@ -65,16 +65,7 @@ export const CourseModuleController = {
 
   batchUnlinkModules: catchAsync(async (req: Request, res: Response) => {
     const courseId = req.params.courseId as string;
-    const moduleIds = req.body.moduleIds as string[];
-    if (!moduleIds || !Array.isArray(moduleIds) || moduleIds.length === 0) {
-      sendResponse(res, 400, {
-        success: false,
-        message: 'moduleIds array is required in request body',
-        data: null,
-        meta: null,
-      });
-      return;
-    }
+    const { moduleIds } = req.body;
     await CourseModuleService.batchUnlinkModules(courseId, moduleIds);
     sendResponse(res, 200, {
       success: true,

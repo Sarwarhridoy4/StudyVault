@@ -49,10 +49,11 @@ router.post(
   CourseModuleController.batchLinkModules
 );
 
-router.delete(
+router.post(
   '/batch/unlink/:courseId',
   auth,
   rbac,
+  sanitizeBody(['moduleIds']),
   CourseModuleController.batchUnlinkModules
 );
 
