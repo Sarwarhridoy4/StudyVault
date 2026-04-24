@@ -21,7 +21,6 @@ const UserSchema = new Schema<IUser>(
 
 // Indexes
 UserSchema.index({ email: 1 });
-UserSchema.index({ uid: 1 });
 UserSchema.index({ role: 1 });
 
 const User = mongoose.model<IUser>('User', UserSchema);
