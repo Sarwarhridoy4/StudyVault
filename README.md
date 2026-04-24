@@ -757,11 +757,11 @@ graph LR
 | GET | `/api/v1/admin/modules` | Admin | View all modules |
 | PATCH | `/api/v1/admin/modules/:id` | Admin | Edit any module |
 | DELETE | `/api/v1/admin/modules/:id` | Admin | Delete any module |
-| POST | `/api/v1/admin/courses/:courseId/modules/:moduleId/link` | Admin | Link module to course |
-| DELETE | `/api/v1/admin/courses/:courseId/modules/:moduleId/unlink` | Admin | Unlink module from course |
-| GET | `/api/v1/admin/courses/:courseId/modules` | Admin | Get course modules |
-| POST | `/api/v1/admin/courses/:courseId/modules/batch/link` | Admin | Batch link modules to course |
-| DELETE | `/api/v1/admin/courses/:courseId/modules/batch/unlink` | Admin | Batch unlink modules from course |
+| POST | `/api/v1/coursemodule/link` | Admin | Link module to course |
+| DELETE | `/api/v1/coursemodule/unlink/:courseId/:moduleId` | Admin | Unlink module from course |
+| GET | `/api/v1/coursemodule/course/:courseId/modules` | Admin | Get course modules |
+| POST | `/api/v1/coursemodule/batch/link` | Admin | Batch link modules to course |
+| DELETE | `/api/v1/coursemodule/batch/unlink/:courseId` | Admin | Batch unlink modules from course |
 | GET | `/api/v1/admin/courses` | Admin | View all courses |
 | GET | `/api/v1/admin/users` | Admin | View all users |
 | POST | `/api/v1/upload` | User | Upload image |
@@ -1516,11 +1516,11 @@ GET  /api/v1/admin/modules                 View all modules
 PATCH /api/v1/admin/modules/:id            Edit any module
 DELETE /api/v1/admin/modules/:id           Delete any module
 GET  /api/v1/admin/courses                 View all courses
-POST /api/v1/admin/courses/:courseId/modules/:moduleId/link   Link module to course
-DELETE /api/v1/admin/courses/:courseId/modules/:moduleId/unlink  Unlink module from course
-GET  /api/v1/admin/courses/:courseId/modules  Get course modules
-POST /api/v1/admin/courses/:courseId/modules/batch/link   Batch link modules
-DELETE /api/v1/admin/courses/:courseId/modules/batch/unlink  Batch unlink modules
+POST /api/v1/coursemodule/link   Link module to course
+DELETE /api/v1/coursemodule/unlink/:courseId/:moduleId  Unlink module from course
+GET  /api/v1/coursemodule/course/:courseId/modules  Get course modules
+POST /api/v1/coursemodule/batch/link   Batch link modules
+POST /api/v1/coursemodule/batch/unlink/:courseId  Batch unlink modules
 GET  /api/v1/admin/users                  View all users
 ```
 
