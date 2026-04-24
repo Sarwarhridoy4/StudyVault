@@ -13,14 +13,16 @@ This backend provides secure, scalable, and modular APIs for managing **courses 
 ### Core Features
 - ✅ Courses & Modules CRUD (Create, Read, Update, Delete)
 - ✅ Advanced Search, Filter, Sort, Pagination
-- ⚠️ Role-Based Access Control (RBAC middleware ready, auth not implemented)
-- ⚠️ Firebase Auth-ready middleware (auth not implemented)
+- ✅ **Role-Based Access Control (RBAC)** with ADMIN/USER roles
+- ✅ **Dual Authentication System**:
+  - 🔐 Firebase/Google OAuth (ID token verification)
+  - 📧 Local email/password with session cookies
 - ✅ Cloud image upload & deletion (Cloudinary)
-- ✅ **Transaction rollback for image uploads** (Cloudinary → DB atomicity)
+- ✅ Transaction rollback for image uploads (Cloudinary → DB atomicity)
 - ✅ Automatic Cloudinary cleanup on course delete
 - ✅ Centralized error handling (Zod, Mongoose, Multer)
 - ✅ Input sanitization (XSS protection)
-- ✅ Rate limiting (brute-force protection)
+- ✅ Rate limiting (brute-force protection on auth endpoints)
 - ✅ Centralized logging (Winston)
 - ✅ Production security hardening
 - ✅ Scalable modular architecture
@@ -73,22 +75,26 @@ bun install
    # Server
    PORT=5000
    NODE_ENV=development
-   
+
    # MongoDB
    MONGO_URI=mongodb://localhost:27017/studyvault
-   
+
    # Cloudinary (for image uploads)
    CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
    CLOUDINARY_API_KEY=your_cloudinary_api_key
    CLOUDINARY_API_SECRET=your_cloudinary_api_secret
-   
+
    # CORS (optional, default: * for dev)
    CORS_ORIGIN=*
-   
-   # Firebase (optional - auth not yet implemented)
-   # FIREBASE_PROJECT_ID=your_firebase_project_id
-   # FIREBASE_CLIENT_EMAIL=your_firebase_client_email
-   # FIREBASE_PRIVATE_KEY=your_firebase_private_key
+
+   # Session secret (required for email/password auth)
+   SESSION_SECRET=your-session-secret-key-change-in-production
+   SESSION_MAX_AGE=604800000
+
+   # Firebase (required for Google/SSO login)
+   FIREBASE_PROJECT_ID=your_firebase_project_id
+   FIREBASE_CLIENT_EMAIL=your_firebase_client_email
+   FIREBASE_PRIVATE_KEY=your_firebase_private_key
    ```
 
 ---
@@ -169,26 +175,44 @@ Expected response:
 
 ## API Testing
 
-### Get All Modules
+### Health Check
 ```bash
-curl http://localhost:5000/api/v1/modules
+curl http://localhost:5000/health
 ```
 
-### Create a Course
+### Authentication
+
+#### Register (Email/Password)
 ```bash
-curl -X POST http://localhost:5000/api/v1/courses \
-  -F "title=React Basics" \
-  -F "shortDescription=Learn React fast" \
-  -F "description=Complete React course for beginners" \
-  -F "category=frontend" \
-  -F "difficulty=beginner" \
-  -F "price=0" \
-  -F "image=@./react-course.png"
+curl -X POST http://localhost:5000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"SecurePass123","displayName":"Test User"}'
 ```
 
-### Search with Filters
+#### Login (Email/Password)
 ```bash
-curl "http://localhost:5000/api/v1/modules?search=react&category=frontend&page=1&limit=10"
+curl -c cookies.txt -X POST http://localhost:5000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"SecurePass123"}'
+```
+
+#### Get Current User (using session cookie)
+```bash
+curl -b cookies.txt http://localhost:5000/api/v1/auth/me
+```
+
+#### Firebase Authentication
+```bash
+curl -X POST http://localhost:5000/api/v1/auth/firebase \
+  -H "Content-Type: application/json" \
+  -d '{"idToken":"<FIREBASE_ID_TOKEN_FROM_CLIENT>"}'
+```
+
+### Create a Module (requires authentication)
+```bash
+curl -b cookies.txt -X POST http://localhost:5000/api/v1/modules/add \
+  -H "Content-Type: application/json" \
+  -d '{"title":"React Basics","shortDescription":"Learn React from scratch","description":"A beginner-friendly module covering components, props, state, and hooks.","category":"frontend","price":0,"image":"https://example.com/react-basics.jpg"}'
 ```
 
 ## Tech Stack
@@ -208,11 +232,62 @@ curl "http://localhost:5000/api/v1/modules?search=react&category=frontend&page=1
 | **dompurify** | XSS sanitization |
 | **Cloudinary** | Image upload & CDN |
 | **Multer** | Multipart form data parsing |
-| **Nodemon** | Development auto-reload |
+| **email.service.ts** | Email service (future) |
 
 ---
 
-# 📁 Project Structure
+## 🔐 Authentication
+
+The StudyVault backend supports two authentication methods:
+
+### 1. Firebase / Google OAuth
+
+Ideal for seamless social login.
+
+**Flow:**
+1. Frontend obtains Firebase ID token after Google sign-in via Firebase SDK.
+2. Send token to `POST /api/v1/auth/firebase` with JSON body: `{ "idToken": "..." }`.
+3. Backend verifies token using Firebase Admin SDK.
+4. If UID is new → creates user record and returns `isNewUser: true`.
+5. Session cookie is set for browser clients. The same user can continue with session or Bearer token.
+
+**Token usage:**
+- Include `Authorization: Bearer <ID_TOKEN>` header for stateless requests.
+- Or rely on session cookie (automatically sent by browser).
+
+### 2. Local Email/Password (Session-based)
+
+Classic username/password auth with HTTP-only cookies.
+
+**Endpoints:**
+- `POST /api/v1/auth/register` – create account
+- `POST /api/v1/auth/login` – sign in (creates session)
+- `POST /api/v1/auth/logout` – destroy session
+- `GET /api/v1/auth/me` – get current user
+- `PATCH /api/v1/auth/me` – update profile
+- `DELETE /api/v1/auth/me` – delete account
+
+**Session behavior:**
+- Sessions are stored in MongoDB via `connect-mongodb-session`.
+- Session cookie is HTTP-only, Secure in production, SameSite=Lax.
+- Default expiry: 7 days (`SESSION_MAX_AGE` in env).
+
+### Protected Routes
+
+Any route using the `auth` middleware accepts **either** a valid Firebase ID token **or** a valid session cookie. You don't need to choose one method—the backend will detect the session first, then fall back to Bearer token.
+
+### Role-Based Access Control (RBAC)
+
+After authentication, the `rbac` middleware enforces roles:
+
+- Admin-only routes: `rbac('ADMIN')`
+- Authenticated user routes: `rbac('USER', 'ADMIN')`
+
+User roles from Firebase: automatically set to `USER` unless UID starts with `admin_`. Local registrations default to `USER`.
+
+---
+
+## 🧠 Architecture Highlights
 
 ```text
 src/
@@ -221,75 +296,82 @@ src/
  ├── config/
  │    ├── db.ts                      # MongoDB connection
  │    ├── env.ts                     # Environment variables
- │    └── cloudinary.ts              # Cloudinary config (image CDN)
+ │    ├── cloudinary.ts              # Cloudinary config
+ │    └── session.ts                 # Express session configuration
  ├── middlewares/
- │    ├── auth.ts                    # Firebase auth middleware
+ │    ├── auth.ts                    # Firebase + Session auth middleware
  │    ├── rbac.ts                    # Role-based access control
  │    ├── upload.ts                  # Multer file upload middleware
- │    ├── validation.ts              # Zod validation middleware
- │    └── errorHandler.ts            # Centralized error handler
+ │    ├── validation.ts              # Zod validation middleware factory
+ │    ├── errorHandler.ts            # Centralized error handler
+ │    └── sanitize.ts                # XSS sanitization
  ├── utils/
- │    ├── ApiFeatures.ts             # Query engine (search, filter, sort, paginate)
+ │    ├── ApiFeatures.ts             # Query builder (search, filter, sort, paginate)
  │    ├── AppError.ts                # Custom error class
  │    ├── catchAsync.ts              # Async error wrapper HOF
- │    ├── errorFormatter.ts          # Zod & error formatting utilities
- │    └── sendResponse.ts            # Standardized response utility
+ │    ├── errorFormatter.ts          # Zod error formatting
+ │    ├── logger.ts                  # Winston logger
+ │    └── sendResponse.ts            # Standardized response
  ├── errors/                         # Custom error classes
- │    ├── index.ts                   # Error exports barrel file
- │    ├── AppError.ts                # Base operational error
- │    ├── MongooseError.ts           # MongoDB error helpers
- │    ├── AuthError.ts               # Authentication errors
- │    └── CloudinaryError.ts         # Cloudinary upload errors
+ │    ├── index.ts                   # Barrel export
+ │    ├── AppError.ts
+ │    ├── MongooseError.ts
+ │    ├── AuthError.ts
+ │    └── CloudinaryError.ts
  ├── services/
- │    ├── cloudinary.service.ts      # Cloudinary upload/delete logic
- │    ├── image.service.ts           # Upload helpers with rollback/cleanup
+ │    ├── cloudinary.service.ts      # Cloudinary upload/delete
+ │    ├── image.service.ts           # Transaction helpers with rollback
+ │    ├── firebase.service.ts        # Firebase Admin SDK verification
  │    └── email.service.ts           # Email service (future)
-  ├── modules/
-  │    ├── course/                     # Course module (CLEAN ARCHITECTURE)
-  │    │    ├── course.route.ts        # Routes: GET /courses, POST /, PATCH /:id, DELETE /:id
-  │    │    ├── course.controller.ts   # HTTP layer: validate input, call service, send response
-  │    │    ├── course.service.ts      # Business logic layer
-  │    │    ├── course.repository.ts   # Database operations (Mongoose)
-  │    │    ├── course.model.ts        # Mongoose schema & model
-  │    │    ├── course.types.ts        # TypeScript interfaces & utility types
-  │    │    └── course.validation.ts   # Zod schemas
-  │    │
-  │    ├── module/                     # Module module (CLEAN ARCHITECTURE) - formerly "item"
-  │    │    ├── module.route.ts        # Routes: GET /modules, POST /add, PATCH /:id, DELETE /:id
-  │    │    ├── module.controller.ts   # HTTP layer
-  │    │    ├── module.service.ts      # Business logic layer
-  │    │    ├── module.repository.ts   # Database operations
-  │    │    ├── module.model.ts        # Mongoose schema & model
-  │    │    ├── module.types.ts        # TypeScript interfaces
-  │    │    └── module.validation.ts   # Zod schemas
-  │    │
-  │    ├── coursemodule/               # Course-Module relationship
-  │    │    ├── coursemodule.route.ts  # Simplified link/unlink routes + legacy compatibility routes
-  │    │    ├── coursemodule.controller.ts
-  │    │    ├── coursemodule.service.ts
-  │    │    ├── coursemodule.repository.ts
-  │    │    ├── coursemodule.model.ts  # Join table schema
-  │    │    ├── coursemodule.types.ts
-  │    │    └── coursemodule.validation.ts
-  │    │
-  │    ├── admin/                      # Admin module
-  │    │    ├── admin.route.ts         # Thin admin routes
-  │    │    ├── admin.controller.ts    # HTTP layer only
-  │    │    └── admin.service.ts       # Admin orchestration
-  │    │
-  │    ├── public/                     # Public pages
-  │    │    ├── public.route.ts        # Routes: / and /about
-  │    │    ├── public.controller.ts   # HTTP layer only
-  │    │    └── public.service.ts      # Public page data
-  │    │
-  │    └── user/
-  │         ├── user.model.ts
-  │         ├── user.types.ts
-  │         ├── user.repository.ts
-  │         └── user.service.ts
- ├── emails/                        # Email templates (future)
- │    └── templates/                # EJS templates
- └── queue/                         # Background job queues (future)
+ ├── modules/
+ │    ├── course/                    # Course module
+ │    │    ├── course.route.ts
+ │    │    ├── course.controller.ts
+ │    │    ├── course.service.ts
+ │    │    ├── course.repository.ts
+ │    │    ├── course.model.ts
+ │    │    ├── course.types.ts
+ │    │    └── course.validation.ts
+ │    │
+ │    ├── module/                    # Module module
+ │    │    ├── module.route.ts
+ │    │    ├── module.controller.ts
+ │    │    ├── module.service.ts
+ │    │    ├── module.repository.ts
+ │    │    ├── module.model.ts
+ │    │    ├── module.types.ts
+ │    │    └── module.validation.ts
+ │    │
+ │    ├── coursemodule/              # Course-Module relationship
+ │    │    ├── coursemodule.route.ts
+ │    │    ├── coursemodule.controller.ts
+ │    │    ├── coursemodule.service.ts
+ │    │    ├── coursemodule.repository.ts
+ │    │    ├── coursemodule.model.ts
+ │    │    ├── coursemodule.types.ts
+ │    │    └── coursemodule.validation.ts
+ │    │
+ │    ├── admin/                     # Admin module
+ │    │    ├── admin.route.ts
+ │    │    ├── admin.controller.ts
+ │    │    └── admin.service.ts
+ │    │
+ │    ├── public/                    # Public pages
+ │    │    ├── public.route.ts
+ │    │    ├── public.controller.ts
+ │    │    └── public.service.ts
+ │    │
+ │    └── user/                      # User & Authentication module
+ │         ├── user.model.ts
+ │         ├── user.types.ts
+ │         ├── user.repository.ts
+ │         ├── user.service.ts
+ │         ├── user.controller.ts
+ │         ├── user.route.ts
+ │         └── user.validation.ts
+ ├── emails/                         # Email templates (future)
+ │    └── templates/
+ └── queue/                          # Background job queues (future)
 ```
 
 ---

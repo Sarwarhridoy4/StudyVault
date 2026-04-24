@@ -44,11 +44,11 @@ The system has different routes:
 - `PATCH /api/v1/modules/:id` - Update own module (requires login)
 - `DELETE /api/v1/modules/:id` - Delete own module (requires login)
 - `GET /api/v1/modules/manage` - Get user's modules (requires login)
-- `POST /api/v1/courses` - Create course (requires admin) — **image required** (file upload or URL)
-- `PATCH /api/v1/courses/:id` - Update course (requires admin)
-- `DELETE /api/v1/courses/:id` - Delete course (requires admin)
+- `POST /api/v1/courses` - Create course (requires login) — **image required** (file upload or URL)
+- `PATCH /api/v1/courses/:id` - Update course (requires login)
+- `DELETE /api/v1/courses/:id` - Delete course (requires login)
 
-#### Admin Routes (Admin Role Required)
+#### Admin Routes (ADMIN Role Required)
 - `GET /api/v1/admin/modules` - View all modules
 - `PATCH /api/v1/admin/modules/:id` - Edit any module
 - `DELETE /api/v1/admin/modules/:id` - Delete any module
@@ -290,7 +290,7 @@ Multiple layers of protection:
 - **Security**: Helmet, CORS, Rate Limiter
 - **File Upload**: Multer middleware + Cloudinary service integration
 - **Logging**: Winston (records everything)
-- **Auth**: Firebase (handles user accounts)
+- **Auth**: Firebase Admin SDK (verify Google OAuth tokens) + Local Email/Password with sessions (bcrypt)
 
 ---
 

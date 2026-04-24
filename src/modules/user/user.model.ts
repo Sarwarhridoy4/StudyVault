@@ -4,24 +4,28 @@ import type { IUser, UserRole, UserCreateInput, UserResponse } from './user.type
 const UserSchema = new Schema<IUser>(
   {
     uid: { type: String, required: true, unique: true },
-    email: { type: String, required: true, lowercase: true, trim: true },
+    email: { type: String, required: true, lowercase: true, trim: true, unique: true },
     displayName: { type: String, trim: true },
     photoURL: { type: String },
+    password: { type: String }, // Hashed password for local auth
     role: {
       type: String,
       enum: ['USER', 'ADMIN'],
       default: 'USER'
     },
     emailVerified: { type: Boolean, default: false },
+    authProvider: {
+      type: String,
+      enum: ['firebase', 'local'],
+      default: 'local'
+    },
   },
   {
     timestamps: true,
   }
 );
 
-// Indexes
-UserSchema.index({ email: 1 });
-UserSchema.index({ role: 1 });
+// Note: Unique indexes on uid and email are already created via schema `unique: true`
 
 const User = mongoose.model<IUser>('User', UserSchema);
 

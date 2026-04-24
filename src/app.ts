@@ -6,11 +6,13 @@ import errorHandler from './middlewares/errorHandler';
 import { globalRateLimiter, authRateLimiter, itemRateLimiter } from './middlewares/rateLimiter';
 import { sanitizeBody } from './middlewares/sanitize';
 import { logger, loggerStream } from './utils/logger';
+import { sessionMiddleware } from './config/session';
 import publicRouter from './modules/public/public.route';
 import courseRouter from './modules/course/course.route';
 import moduleRouter from './modules/module/module.route';
 import adminRouter from './modules/admin/admin.route';
 import courseModuleRouter from './modules/coursemodule/coursemodule.route';
+import authRouter from './modules/user/user.route';
 
 const app = express();
 
@@ -39,6 +41,9 @@ app.use('/api/v1/auth', authRateLimiter);
 // Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Session middleware (must come before routes that use req.session)
+app.use(sessionMiddleware);
 
 // HTTP request logging with Winston
 app.use(morgan('combined', {
@@ -76,8 +81,8 @@ app.use('/api/v1/modules', moduleRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/coursemodule', courseModuleRouter);
 
-// Auth routes (to be implemented)
-// app.use('/api/v1/auth', authRouter);
+// Auth routes
+app.use('/api/v1/auth', authRouter);
 
 // Error handling (should be last)
 app.use(errorHandler);

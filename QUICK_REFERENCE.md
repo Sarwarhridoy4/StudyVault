@@ -6,39 +6,68 @@ http://localhost:5000
 ```
 
 ## Authentication
-Currently disabled — all endpoints accessible without token.
+
+### Local Email/Password (Session-based)
+```bash
+# Register
+curl -X POST http://localhost:5000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"SecurePass123","displayName":"User"}'
+
+# Login (sets session cookie)
+curl -c cookies.txt -X POST http://localhost:5000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"SecurePass123"}'
+
+# Access protected routes using cookies
+curl -b cookies.txt http://localhost:5000/api/v1/auth/me
+
+# Logout
+curl -b cookies.txt -X POST http://localhost:5000/api/v1/auth/logout
+```
+
+### Firebase / Google OAuth (Bearer Token)
+```bash
+# Frontend obtains Firebase ID token after Google sign-in
+# Send token to backend to create session or just use Bearer token
+curl -X POST http://localhost:5000/api/v1/auth/firebase \
+  -H "Content-Type: application/json" \
+  -d '{"idToken":"<FIREBASE_ID_TOKEN>"}'
+```
+
+**Protected endpoints** accept either a session cookie **or** an `Authorization: Bearer <token>` header.
 
 ---
 
 ## Course Creation (Image Required!)
 
+**Note:** `createdBy` is automatically set from the authenticated user; do NOT provide it in the request.
+
 ### With File Upload (Cloudinary)
 ```bash
 curl -X POST http://localhost:5000/api/v1/courses \
+  -H "Authorization: Bearer <token_or_session>" \
   -F "title=My Course" \
   -F "shortDescription=At least 10 chars description" \
   -F "description=At least 20 chars full description here for validation." \
   -F "category=development" \
   -F "difficulty=beginner" \
   -F "price=19.99" \
-  -F "createdBy=user123" \
   -F "image=@/path/to/image.png"
 ```
-Returns: `201` with Cloudinary URL in `data.image`
 
 ### With Image URL
 ```bash
 curl -X POST http://localhost:5000/api/v1/courses \
+  -H "Authorization: Bearer <token>" \
   -F "title=My Course" \
   -F "shortDescription=..." \
   -F "description=..." \
   -F "category=development" \
   -F "difficulty=intermediate" \
   -F "price=29.99" \
-  -F "createdBy=user123" \
   -F "image=https://example.com/image.jpg"
 ```
-Returns: `201` with URL stored as-is
 
 **Important:** `image` is **required**. Omitting it returns `400`.
 
@@ -48,6 +77,7 @@ Returns: `201` with URL stored as-is
 
 ```bash
 curl -X POST http://localhost:5000/api/v1/modules/add \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
     "title": "My Module",
@@ -55,11 +85,9 @@ curl -X POST http://localhost:5000/api/v1/modules/add \
     "description": "At least 20 characters minimum for full description validation purposes.",
     "category": "backend",
     "price": 9.99,
-    "image": "https://example.com/image.jpg",
-    "createdBy": "system"
+    "image": "https://example.com/image.jpg"
   }'
 ```
-Returns: `201`
 
 ---
 
@@ -69,11 +97,13 @@ Returns: `201`
 ```bash
 # Link
 curl -X POST http://localhost:5000/api/v1/coursemodule/courses/:courseId/modules \
+  -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"moduleId":"...","order":0}'
 
 # Unlink
-curl -X DELETE http://localhost:5000/api/v1/coursemodule/courses/:courseId/modules/:moduleId
+curl -X DELETE http://localhost:5000/api/v1/coursemodule/courses/:courseId/modules/:moduleId \
+  -H "Authorization: Bearer <token>"
 
 # Get course modules
 curl http://localhost:5000/api/v1/coursemodule/courses/:courseId/modules
@@ -103,6 +133,9 @@ curl -X POST http://localhost:5000/api/v1/coursemodule/batch/unlink/:courseId \
 ---
 
 ## Admin Endpoints
+
+**All admin routes require `Authorization: Bearer <ADMIN_TOKEN>` or admin session.**
+
 ```bash
 # All modules
 curl http://localhost:5000/api/v1/admin/modules
@@ -134,7 +167,7 @@ curl -X DELETE http://localhost:5000/api/v1/admin/modules/:id
 | `difficulty` | enum | `beginner` \| `intermediate` \| `advanced` |
 | `price` | number | ≥ 0 |
 | `image` | string (URL) | **required**, valid URL format |
-| `createdBy` | string | required |
+| `createdBy` | — | **Do NOT send** — set automatically from authenticated user |
 
 ---
 
@@ -157,6 +190,8 @@ curl -X DELETE http://localhost:5000/api/v1/admin/modules/:id
 | `200` | OK (GET/PATCH/DELETE success) |
 | `201` | Created (POST success) |
 | `400` | Bad Request (validation error, missing image) |
+| `401` | Unauthorized (missing or invalid credentials) |
+| `403` | Forbidden (insufficient permissions) |
 | `404` | Not Found (invalid ID or resource doesn't exist) |
 | `429` | Too Many Requests (rate limit exceeded) |
 
@@ -164,11 +199,35 @@ curl -X DELETE http://localhost:5000/api/v1/admin/modules/:id
 
 ## Common Errors
 
-### 400 — "Image is required"
+### 401 — Authentication required
 ```json
 {
   "success": false,
-  "message": "Image is required: provide an image URL in the \"image\" field or upload an image file"
+  "message": "No valid authentication provided",
+  "data": null,
+  "meta": null
+}
+```
+**Fix:** Include a valid session cookie or Bearer token.
+
+### 403 — Insufficient permissions
+```json
+{
+  "success": false,
+  "message": "Insufficient permissions",
+  "data": null,
+  "meta": null
+}
+```
+**Fix:** Ensure you have the required role (USER or ADMIN) for the endpoint.
+
+### 400 — Image is required
+```json
+{
+  "success": false,
+  "message": "Image is required: provide an image URL in the \"image\" field or upload an image file",
+  "data": null,
+  "meta": null
 }
 ```
 **Fix:** Include `-F "image=@file.png"` OR `-F "image=https://..."`
@@ -200,7 +259,7 @@ curl -X DELETE http://localhost:5000/api/v1/admin/modules/:id
 
 | Scope | Window | Limit |
 |-------|--------|-------|
-| Global (all) | 15 min | 1000 requests |
+| Global (all) | 15 min | 100 requests |
 | Item ops (create/update/delete) | 1 hour | 30 requests |
 | Auth endpoints | 1 hour | 5 requests |
 
@@ -208,15 +267,18 @@ curl -X DELETE http://localhost:5000/api/v1/admin/modules/:id
 
 ## Tested & Verified
 
-✅ All 32 core endpoints working  
+✅ All core endpoints working  
+✅ Local email/password registration & login (session)  
+✅ Firebase/Google OAuth (idempotent register/login)  
+✅ Role-based access control (RBAC)  
 ✅ File upload → Cloudinary integration  
 ✅ Image URL direct storage  
 ✅ Validation & error handling  
 ✅ Course-Module linking (modern + legacy)  
-✅ Admin operations  
-✅ Invalid ID rejection  
-✅ XSS sanitization on text fields  
+✅ Admin operations protected  
+✅ Password hashing with bcrypt  
+✅ Session management with MongoDB  
+✅ CreatedBy automatically set from authenticated user  
 
 **Server logs:** `logs/combined.log`  
-**Test scripts:** `test_all_apis_final.sh`, `API_TEST_RESULTS.md`  
-**Full report:** `FINAL_API_TEST_REPORT.md`
+**Full docs:** `API_LIST.md`, `README.md`

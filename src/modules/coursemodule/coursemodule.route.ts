@@ -7,7 +7,8 @@ import { createCourseModuleSchema, batchLinkSchema } from './coursemodule.valida
 
 const router = Router();
 
-router.use(auth, rbac);
+// All course-module management routes require ADMIN role
+router.use(auth, rbac('ADMIN'));
 
 // Backward-compatible endpoints
 router.post('/link', validate(createCourseModuleSchema), CourseModuleController.linkModule);

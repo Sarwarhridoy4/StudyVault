@@ -30,11 +30,13 @@ export const moduleController = {
 
   createModule: catchAsync(async (req: Request, res: Response) => {
     // Validation already done by middleware, data is safe
-    const validatedData = {
-      ...req.body,
-      createdBy: 'system', // Will be replaced by auth middleware
-    } as any;
-    const module = await moduleService.createModule(validatedData);
+    const validatedData = moduleClientSchema.parse(req.body);
+    // @ts-ignore - req.user set by auth middleware
+    const createdBy = req.user.uid;
+    const module = await moduleService.createModule({
+      ...validatedData,
+      createdBy,
+    });
     sendResponse(res, 201, {
       success: true,
       message: 'Module created successfully',
@@ -45,7 +47,7 @@ export const moduleController = {
 
   updateModule: catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const validatedData = req.body;
+    const validatedData = moduleUpdateSchema.parse(req.body);
     const module = await moduleService.updateModule(id as string, validatedData);
     sendResponse(res, 200, {
       success: true,
@@ -66,8 +68,9 @@ export const moduleController = {
     });
   }),
 
-  getUserModules: catchAsync(async (_req: Request, res: Response) => {
-    const userId = 'system'; // Will be replaced by auth middleware
+  getUserModules: catchAsync(async (req: Request, res: Response) => {
+    // @ts-ignore - req.user set by auth middleware
+    const userId = req.user.uid;
     const modules = await moduleService.getUserModules(userId);
     sendResponse(res, 200, {
       success: true,

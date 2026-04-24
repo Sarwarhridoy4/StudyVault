@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { moduleController } from './module.controller';
+import auth from '../../middlewares/auth';
 import { validate } from '../../middlewares/validation';
 import { sanitizeBody } from '../../middlewares/sanitize';
 import { moduleClientSchema, moduleUpdateSchema } from './module.validation';
@@ -7,14 +8,15 @@ import { moduleClientSchema, moduleUpdateSchema } from './module.validation';
 const router = Router();
 
 // Public routes (no auth required)
-// IMPORTANT: /manage must come BEFORE /:id to avoid route conflict
-router.get('/manage', moduleController.getUserModules);
 router.get('/', moduleController.getAllModules);
 router.get('/:id', moduleController.getModuleById);
 
-// User protected routes (sanitize + validate before controller)
+// Protected routes - require authentication
+router.get('/manage', auth, moduleController.getUserModules);
+
 router.post(
   '/add',
+  auth,
   sanitizeBody(['title', 'shortDescription', 'description', 'category', 'image']),
   validate(moduleClientSchema),
   moduleController.createModule
@@ -22,11 +24,12 @@ router.post(
 
 router.patch(
   '/:id',
+  auth,
   sanitizeBody(['title', 'shortDescription', 'description', 'category', 'image']),
   validate(moduleUpdateSchema),
   moduleController.updateModule
 );
 
-router.delete('/:id', moduleController.deleteModule);
+router.delete('/:id', auth, moduleController.deleteModule);
 
 export default router;

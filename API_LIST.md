@@ -3,10 +3,191 @@
 Base URL: `http://localhost:5000`
 
 Notes:
-- All API routes currently return the standard shape: `success`, `message`, `data`, `meta`
-- `auth` and `rbac` middleware are wired on some routes, but their implementations are still placeholders
-- Course create/update uses `multipart/form-data` because image upload is handled there
-- There is no standalone `/api/v1/upload` endpoint
+- All API routes return the standard shape: `success`, `message`, `data`, `meta`
+- Authentication is implemented via:
+  - **Firebase/Google OAuth** (Bearer token in Authorization header)
+  - **Local Email/Password** with HTTP-only session cookies
+- Protected routes accept either a valid Firebase ID token **or** a valid session cookie
+- Course create/update can use `multipart/form-data` with image upload **or** JSON with image URL
+
+---
+
+## Authentication Endpoints
+
+All authentication endpoints are rate-limited to 5 requests per hour per IP.
+
+### `POST /api/v1/auth/firebase`
+
+Authenticate with Firebase/Google OAuth.
+
+**Headers:** `Content-Type: application/json`
+
+**Body:**
+```json
+{
+  "idToken": "Firebase_ID_token_obtained_from_client_SDK"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Logged in successfully", // or "User registered successfully" for first-time users
+  "data": {
+    "uid": "firebase_uid",
+    "email": "user@example.com",
+    "displayName": "User Name",
+    "photoURL": "https://...",
+    "role": "USER",
+    "emailVerified": true,
+    "authProvider": "firebase"
+  },
+  "meta": {
+    "isNewUser": true | false
+  }
+}
+```
+
+**Notes:**
+- If the Firebase UID is new, a user record is created and `isNewUser: true`.
+- A session cookie is set for browser clients.
+- For subsequent requests, clients can use the session cookie **or** continue sending the Firebase ID token in `Authorization: Bearer <token>`.
+
+---
+
+### `POST /api/v1/auth/register`
+
+Create a local account with email and password.
+
+**Headers:** `Content-Type: application/json`
+
+**Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "securePassword123",
+  "displayName": "User Name" // optional
+}
+```
+
+**Response (201):**
+```json
+{
+  "success": true,
+  "message": "Account created successfully",
+  "data": {
+    "uid": "local_1234567890_abcdef",
+    "email": "user@example.com",
+    "displayName": "User Name",
+    "role": "USER",
+    "emailVerified": false,
+    "authProvider": "local"
+  },
+  "meta": null
+}
+```
+
+**Errors:**
+- `409` if email already registered.
+
+---
+
+### `POST /api/v1/auth/login`
+
+Log in with email and password.
+
+**Headers:** `Content-Type: application/json`
+
+**Body:**
+```json
+{
+  "email": "user@example.com",
+  "password": "securePassword123"
+}
+```
+
+**Response (200):** same shape as register (user object).
+
+**Errors:**
+- `401` if credentials invalid or account uses Firebase auth.
+
+---
+
+### `POST /api/v1/auth/logout`
+
+Destroy the current session.
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Logged out successfully",
+  "data": null,
+  "meta": null
+}
+```
+
+---
+
+### `GET /api/v1/auth/me`
+
+Get the currently authenticated user's profile.
+
+**Authentication:** Required (session cookie or Firebase Bearer token)
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Profile retrieved successfully",
+  "data": {
+    "uid": "...",
+    "email": "...",
+    "displayName": "...",
+    "role": "USER",
+    "emailVerified": false,
+    "authProvider": "local"
+  },
+  "meta": null
+}
+```
+
+---
+
+### `PATCH /api/v1/auth/me`
+
+Update the current user's profile (display name, photo URL).
+
+**Authentication:** Required
+
+**Body:**
+```json
+{
+  "displayName": "New Name",
+  "photoURL": "https://example.com/avatar.jpg"
+}
+```
+
+---
+
+### `DELETE /api/v1/auth/me`
+
+Delete the current user account and destroy the session.
+
+**Authentication:** Required
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Account deleted successfully",
+  "data": null,
+  "meta": null
+}
+```
+
+---
 
 ## Public Endpoints
 
@@ -159,45 +340,9 @@ Example response:
 ```
 
 ### `POST /api/v1/modules/add`
-Create a module.
+Create a module. **Requires authentication.**
 
-Content-Type: `application/json`
-
-Example payload:
-```json
-{
-  "title": "Node.js Fundamentals",
-  "shortDescription": "Master Node.js runtime basics",
-  "description": "Learn the event loop, streams, buffers, modules, and how to build backend services with Node.js.",
-  "category": "backend",
-  "price": 29.99,
-  "image": "https://example.com/nodejs-fundamentals.jpg"
-}
-```
-
-Example response:
-```json
-{
-  "success": true,
-  "message": "Module created successfully",
-  "data": {
-    "_id": "680a10000000000000000002",
-    "title": "Node.js Fundamentals",
-    "shortDescription": "Master Node.js runtime basics",
-    "description": "Learn the event loop, streams, buffers, modules, and how to build backend services with Node.js.",
-    "category": "backend",
-    "price": 29.99,
-    "image": "https://example.com/nodejs-fundamentals.jpg",
-    "createdBy": "system"
-  },
-  "meta": null
-}
-```
-
-### `PATCH /api/v1/modules/:id`
-Update a module.
-
-Content-Type: `application/json`
+**Headers:** `Content-Type: application/json` (or use session cookie)
 
 Example payload:
 ```json
@@ -273,27 +418,26 @@ Example response:
 ```
 
 ### `POST /api/v1/courses`
-Create a course.
+Create a course. **Requires authentication.**
 
-Content-Type: `multipart/form-data`
+**Authentication:** Session cookie or Bearer token
 
-Required fields:
+**Content-Type:** `multipart/form-data` (when uploading image file) or `application/json` (when providing image URL)
+
+**Required fields:**
 - `title`
 - `shortDescription`
 - `description`
 - `category`
 - `difficulty` = `beginner | intermediate | advanced`
 - `price`
-- `createdBy`
 - **`image`** – required. Either:
   - Upload as file (`multipart/form-data` with `-F "image=@file.jpg"`), OR
   - Provide as text URL (`-F "image=https://..."`)
 
-**Error responses:**
-- `400` if neither file nor URL is provided
-- `400` if validation fails (invalid URL format, missing other fields, etc.)
+**Important:** The `createdBy` field is set automatically from the authenticated user and must **not** be provided by the client.
 
-Example multipart fields:
+**Example multipart fields:**
 ```text
 title=React Masterclass
 shortDescription=Complete React learning path
@@ -301,11 +445,10 @@ description=A complete course covering React fundamentals, hooks, routing, and p
 category=frontend
 difficulty=beginner
 price=49.99
-createdBy=admin_uid
 image=@./react-masterclass.png
 ```
 
-Equivalent text-body example if using an image URL instead of a file:
+**Example JSON-body (when using image URL):**
 ```json
 {
   "title": "React Masterclass",
@@ -314,10 +457,15 @@ Equivalent text-body example if using an image URL instead of a file:
   "category": "frontend",
   "difficulty": "beginner",
   "price": 49.99,
-  "image": "https://example.com/react-masterclass.jpg",
-  "createdBy": "admin_uid"
+  "image": "https://example.com/react-masterclass.jpg"
 }
 ```
+
+**Error responses:**
+- `400` if neither file nor URL is provided
+- `400` if validation fails (invalid URL format, missing other fields, etc.)
+- `401` if not authenticated
+- `403` if insufficient permissions (admin-only later)
 
 ### `PATCH /api/v1/courses/:id`
 Update a course.
@@ -575,16 +723,16 @@ Example payload:
 ### Course create body
 ```json
 {
-  "title": "string, min 3, required",
-  "shortDescription": "string, min 10, required",
-  "description": "string, min 20, required",
+  "title": "string, min 3",
+  "shortDescription": "string, min 10",
+  "description": "string, min 20",
   "category": "string, required",
   "difficulty": "beginner | intermediate | advanced, required",
   "price": "number, >= 0, required",
-  "image": "string (valid URL), required",
-  "createdBy": "string, required"
+  "image": "string (valid URL) or multipart file upload"
 }
 ```
+**Note:** `createdBy` is set automatically from the authenticated user and should NOT be provided by the client.
 
 ### Course-module single link body
 ```json

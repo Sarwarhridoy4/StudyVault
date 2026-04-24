@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { CourseController } from './course.controller';
 import auth from '../../middlewares/auth';
-import rbac from '../../middlewares/rbac';
 import { validate } from '../../middlewares/validation';
 import { sanitizeBody } from '../../middlewares/sanitize';
 import { createCourseSchema, updateCourseSchema } from './course.validation';
@@ -17,9 +16,8 @@ router.get('/:id', CourseController.getCourseById);
 router.post(
   '/',
   auth,
-  rbac,
   upload.single('image'),
-  sanitizeBody(['title', 'shortDescription', 'description', 'category', 'difficulty', 'price', 'createdBy', 'image']),
+  sanitizeBody(['title', 'shortDescription', 'description', 'category', 'difficulty', 'price', 'image']),
   validate(createCourseSchema),
   CourseController.createCourse
 );
@@ -27,13 +25,12 @@ router.post(
 router.patch(
   '/:id',
   auth,
-  rbac,
   upload.single('image'),
   sanitizeBody(['title', 'shortDescription', 'description', 'category', 'difficulty', 'price', 'image']),
   validate(updateCourseSchema),
   CourseController.updateCourse
 );
 
-router.delete('/:id', auth, rbac, CourseController.deleteCourse);
+router.delete('/:id', auth, CourseController.deleteCourse);
 
 export default router;

@@ -8,7 +8,7 @@ export const CourseController = {
   createCourse: catchAsync(async (req: Request, res: Response) => {
     const validatedData = createCourseSchema.parse(req.body);
 
-    // Enforce image requirement: either image URL in body OR image file upload
+    // Enforce image requirement
     if (!validatedData.image && !req.file) {
       return sendResponse(res, 400, {
         success: false,
@@ -18,8 +18,13 @@ export const CourseController = {
       });
     }
 
+    // Set creator from authenticated user (not from client)
+    // @ts-ignore - req.user set by auth middleware
+    const createdBy = req.user.uid;
+
     const result = await CourseService.createCourse({
       ...validatedData,
+      createdBy,
       imageFile: (req.file as Express.Multer.File)?.buffer,
     });
     sendResponse(res, 201, {
