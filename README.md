@@ -2,34 +2,39 @@
 
 A production-ready REST API built with **TypeScript + Express.js + Bun** for the *StudyVault* learning platform.
 
-This backend provides secure, scalable, and modular APIs for managing **study items (courses / learning modules)** with authentication, filtering, file uploads, and role-based access control.
+This backend provides secure, scalable, and modular APIs for managing **study items (courses / learning modules)** with filtering, file uploads, and comprehensive security hardening.
 
-**Tech Stack:** TypeScript • Bun • Express.js • Mongoose • Zod • Helmet • CORS • Morgan
+**Tech Stack:** TypeScript • Bun • Express.js • Mongoose • Zod • Helmet • CORS • Winston • Rate Limiting • Cloudinary
 
 ---
 
-# 🚀 Features
+## 🚀 Features
 
-## Core Features
-- Study Items CRUD (Create, Read, Update, Delete)
-- Advanced Search, Filter, Sort, Pagination
-- Role-Based Access Control (RBAC)
-- Firebase Auth-ready middleware
-- Cloud image upload & deletion
-- Centralized error handling
-- Transaction-safe operations
-- Scalable modular architecture
+### Core Features
+- ✅ Study Items CRUD (Create, Read, Update, Delete)
+- ✅ Advanced Search, Filter, Sort, Pagination
+- ⚠️ Role-Based Access Control (RBAC middleware ready, auth not implemented)
+- ⚠️ Firebase Auth-ready middleware (auth not implemented)
+- ✅ Cloud image upload & deletion (Cloudinary)
+- ✅ Centralized error handling (Zod, Mongoose, Multer)
+- ✅ Input sanitization (XSS protection)
+- ✅ Rate limiting (brute-force protection)
+- ✅ Centralized logging (Winston)
+- ✅ Production security hardening
+- ✅ Scalable modular architecture
 
 ---
 
 ## 🧠 Architecture Highlights
 
-- Clean layered architecture (Controller → Service → Repository)
-- Centralized utilities (`catchAsync`, `sendResponse`, `ApiFeatures`)
-- Secure middleware system
-- Cloudinary integration for file storage
-- Validation layer (Joi/Zod ready)
-- Production-grade folder structure
+- **Clean layered architecture**: Route → Controller → Service → Repository → Database
+- **Single Responsibility**: Each layer has exactly one job
+- **Centralized utilities**: `catchAsync`, `sendResponse`, `ApiFeatures`, `errorFormatter`
+- **Security middleware**: Helmet, CORS, rate limiting, sanitization
+- **Cloudinary integration**: Upload, transform, delete images
+- **Validation layer**: Zod schemas with simplified error messages
+- **Centralized logging**: Winston logger with file + console transports
+- **Production-grade**: Error handling, security, monitoring ready
 
 ---
 
@@ -61,18 +66,30 @@ bun install
 
 2. Update `.env` with your configuration:
    ```env
+   # Server
    PORT=5000
    NODE_ENV=development
+   
+   # MongoDB
    MONGO_URI=mongodb://localhost:27017/studyvault
-   FIREBASE_PROJECT_ID=your_firebase_project_id
-   FIREBASE_CLIENT_EMAIL=your_firebase_client_email
-   FIREBASE_PRIVATE_KEY=your_firebase_private_key
+   
+   # Cloudinary (for image uploads)
    CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
    CLOUDINARY_API_KEY=your_cloudinary_api_key
    CLOUDINARY_API_SECRET=your_cloudinary_api_secret
+   
+   # CORS (optional, default: * for dev)
+   CORS_ORIGIN=*
+   
+   # Firebase (optional - auth not yet implemented)
+   # FIREBASE_PROJECT_ID=your_firebase_project_id
+   # FIREBASE_CLIENT_EMAIL=your_firebase_client_email
+   # FIREBASE_PRIVATE_KEY=your_firebase_private_key
    ```
 
-## Running the Server
+---
+
+## 🚀 Usage Instructions
 
 ### Development Mode (with hot reload)
 ```bash
@@ -89,6 +106,12 @@ bun run start
 ```bash
 bun run build
 ```
+
+### Seed Admin User (Optional)
+```bash
+bun run seed
+```
+Creates an admin user in the database (useful for testing admin endpoints).
 
 ## Verifying the Installation
 
@@ -173,9 +196,14 @@ curl "http://localhost:5000/api/v1/studies?search=react&category=frontend&page=1
 | **Express.js** | Web framework |
 | **Mongoose** | MongoDB ODM |
 | **Zod** | Schema validation |
-| **Helmet** | Security headers |
+| **Helmet** | Security headers (CSP, HSTS) |
 | **CORS** | Cross-origin resource sharing |
-| **Morgan** | HTTP request logger |
+| **Morgan** | HTTP request logging (piped to Winston) |
+| **Winston** | Centralized structured logging |
+| **express-rate-limit** | Rate limiting (brute-force protection) |
+| **dompurify** | XSS sanitization |
+| **Cloudinary** | Image upload & CDN |
+| **Multer** | Multipart form data parsing |
 | **Nodemon** | Development auto-reload |
 
 ---
@@ -1298,18 +1326,27 @@ GET  /api/v1/items/:id    Get single item
 
 ---
 
-## User Protected (Auth Required - planned)
+## User Protected (Auth Recommended - Not Enforced)
+
+**Routes exist but authentication is NOT currently enforced.** These endpoints are open to anyone.
 
 ```
-POST /api/v1/items/add     Create item
-PATCH /api/v1/items/:id    Update own item
-DELETE /api/v1/items/:id   Delete own item
-GET  /api/v1/items/manage  Get user's items
+POST /api/v1/items/add     Create item  (no auth check - placeholder createdBy used)
+PATCH /api/v1/items/:id    Update own item (no auth check)
+DELETE /api/v1/items/:id   Delete own item (no auth check)
+GET  /api/v1/items/manage  Get user's items (returns 'system' user items)
 ```
+
+**To enable protection:**
+- Add `auth` middleware to these routes
+- Update controller to use `req.user.uid` (currently uses `'system'` placeholder)
+- See `src/middlewares/auth.ts` (skeleton exists, needs Firebase implementation)
 
 ---
 
-## Admin Protected (Admin Role - planned)
+## Admin Protected (Admin Role - Not Enforced)
+
+**Routes exist but RBAC is NOT currently enforced.** Anyone can access these endpoints.
 
 ```
 GET  /api/v1/admin/items      View all items
@@ -1318,18 +1355,24 @@ DELETE /api/v1/admin/items/:id  Delete any item
 GET  /api/v1/admin/users      View all users
 ```
 
----
-
-## File Upload
-
-```
-POST /api/v1/upload      Upload image to Cloudinary
-DELETE /api/v1/upload/:publicId  Delete Cloudinary image
-```
+**To enable protection:**
+- Add `auth` middleware + `authorize('ADMIN')` to these routes
+- See `src/middlewares/rbac.ts` (skeleton exists)
 
 ---
 
-## Auth (Firebase - planned)
+## File Upload (Public - Auth Recommended)
+
+```
+POST /api/v1/upload      Upload image to Cloudinary (no auth)
+DELETE /api/v1/upload/:publicId  Delete Cloudinary image (no auth)
+```
+
+---
+
+## Auth (Firebase - NOT IMPLEMENTED)
+
+The following endpoints are **not yet built**. They are required for the Odyssey assessment.
 
 ```
 POST /api/v1/auth/login
@@ -1337,6 +1380,10 @@ POST /api/v1/auth/register
 POST /api/v1/auth/logout
 GET  /api/v1/auth/me
 ```
+
+**Status:** Auth middleware skeleton exists (`src/middlewares/auth.ts`) but is non-functional. Routes are commented out in `app.ts`.
+
+**Implementation needed:** See `IMPROVEMENTS.md` for full plan.
 
 ---
 
@@ -1349,8 +1396,37 @@ GET  /api/v1/auth/me
 ❌ No missing rollback handling
 ❌ No unvalidated inputs
 ❌ No insecure routes
-❌ No console.log in production
+❌ No `console.log` in production (use Winston)
 ❌ No fat controllers
+
+---
+
+## 🔐 Security Implementation
+
+### Rate Limiting (AGENT.md Requirement ✅)
+- Global: 100 requests per 15 minutes per IP
+- Auth endpoints (when added): 5 requests per hour per IP
+- Item operations: 30 requests per hour per IP
+- Implemented via `express-rate-limit` in `src/middlewares/rateLimiter.ts`
+
+### Input Sanitization (AGENT.md Requirement ✅)
+- XSS protection using sanitization middleware
+- Removes HTML tags, scripts, event handlers, `javascript:` URLs
+- Applied to text fields (title, description, category, image URL)
+- Implemented in `src/middlewares/sanitize.ts`
+
+### Security Headers (AGENT.md Requirement ✅)
+- Helmet.js with Content Security Policy (CSP)
+- CORS configurable via environment variable
+- HSTS, XSS Protection, and other headers enabled
+- Configured in `src/app.ts`
+
+### Protected Routes (Partially Implemented ⚠️)
+- Auth middleware skeleton exists (`src/middlewares/auth.ts`)
+- RBAC middleware skeleton exists (`src/middlewares/rbac.ts`)
+- **NOT enforced** on any routes (auth module not built)
+- Item create/update/delete routes currently open
+- Admin routes currently open
 
 ---
 
