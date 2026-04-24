@@ -16,6 +16,24 @@ app.use(morgan('dev'));
 app.use(auth);
 app.use(rbac);
 
+// Root endpoint with welcome message
+app.get('/', (_req, res) => {
+  res.json({
+    success: true,
+    message: 'Welcome to StudyVault Backend API',
+    name: 'StudyVault API',
+    version: '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      api: '/api/v1',
+      studies: '/api/v1/studies',
+    },
+    documentation: 'See README.md for complete API documentation',
+  });
+});
+
 // Health check endpoint with system info
 app.get('/health', (_req, res) => {
   const healthData = {
