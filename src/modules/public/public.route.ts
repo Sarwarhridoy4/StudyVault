@@ -14,11 +14,12 @@ router.get(
       data: {
         name: 'StudyVault API',
         version: '1.0.0',
-        description: 'A learning-item marketplace',
+        description: 'A learning platform marketplace',
         endpoints: {
           health: '/health',
           api: '/api/v1',
-          items: '/api/v1/items',
+          courses: '/api/v1/courses',
+          modules: '/api/v1/modules',
           about: '/api/v1/about',
         },
       },
@@ -37,12 +38,12 @@ router.get(
       data: {
         name: 'StudyVault',
         tagline: 'Your gateway to learning',
-        description: 'StudyVault is a marketplace for learning items where users can browse, create, and manage study materials.',
+        description: 'StudyVault is a marketplace for learning modules where users can browse, create, and manage course materials.',
         features: [
-          'Browse study items by category',
-          'Search and filter items',
-          'Add and manage your own items',
-          'Admin control panel',
+          'Browse courses and modules by category',
+          'Search and filter content',
+          'Add and manage your own modules',
+          'Admin control panel for course-module linking',
         ],
         apiVersion: '1.0.0',
       },

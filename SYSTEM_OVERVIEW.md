@@ -2,10 +2,11 @@
 
 ## Simple Explanation
 
-StudyVault is a learning platform backend that lets users create, manage, and find study materials (courses, modules, learning items). Think of it like a library system where:
+StudyVault is a learning platform backend that lets users create, manage, and find learning modules organized into courses. Think of it like a library system where:
 
-- **Admins** can create, edit, and delete any study item
-- **Users** can browse, search, and view study items
+- **Admins** can create, edit, and delete any learning module or course
+- **Users** can browse, search, and view modules and courses
+- **Admin** can link/unlink modules to courses (many-to-many relationship)
 - **Everyone** gets a fast, secure experience with proper validation
 
 ---
@@ -33,25 +34,32 @@ The system has different routes:
 - `GET /` - Landing page with API info
 - `GET /about` - About StudyVault
 - `GET /health` - System health check
-- `GET /api/v1/items` - List all study items
-- `GET /api/v1/items/:id` - View specific item
-- `GET /api/v1/studies` - List all studies
-- `GET /api/v1/studies/:id` - View specific study
+- `GET /api/v1/modules` - List all learning modules
+- `GET /api/v1/modules/:id` - View specific module
+- `GET /api/v1/courses` - List all courses
+- `GET /api/v1/courses/:id` - View specific course with linked modules
 
 #### Protected Routes (Authentication Required)
-- `POST /api/v1/items/add` - Create new item (requires login)
-- `PATCH /api/v1/items/:id` - Update own item (requires login)
-- `DELETE /api/v1/items/:id` - Delete own item (requires login)
-- `POST /api/v1/studies` - Create study (requires login)
-- `PATCH /api/v1/studies/:id` - Update study (requires login)
-- `DELETE /api/v1/studies/:id` - Delete study (requires login)
+- `POST /api/v1/modules/add` - Create new module (requires login)
+- `PATCH /api/v1/modules/:id` - Update own module (requires login)
+- `DELETE /api/v1/modules/:id` - Delete own module (requires login)
+- `GET /api/v1/modules/manage` - Get user's modules (requires login)
+- `POST /api/v1/courses` - Create course (requires admin)
+- `PATCH /api/v1/courses/:id` - Update course (requires admin)
+- `DELETE /api/v1/courses/:id` - Delete course (requires admin)
 - `POST /api/v1/upload` - Upload images (requires login)
 - `DELETE /api/v1/upload/:id` - Delete images (requires login)
 
 #### Admin Routes (Admin Role Required)
-- `GET /api/v1/admin/items` - View all items
-- `PATCH /api/v1/admin/items/:id` - Edit any item
-- `DELETE /api/v1/admin/items/:id` - Delete any item
+- `GET /api/v1/admin/modules` - View all modules
+- `PATCH /api/v1/admin/modules/:id` - Edit any module
+- `DELETE /api/v1/admin/modules/:id` - Delete any module
+- `GET /api/v1/admin/courses` - View all courses
+- `POST /api/v1/courses/:courseId/modules/:moduleId/link` - Link module to course
+- `DELETE /api/v1/courses/:courseId/modules/:moduleId/unlink` - Unlink module from course
+- `GET /api/v1/admin/courses/:courseId/modules` - Get course modules
+- `POST /api/v1/courses/:courseId/modules/batch/link` - Batch link modules
+- `DELETE /api/v1/courses/:courseId/modules/batch/unlink` - Batch unlink modules
 - `GET /api/v1/admin/users` - View all users
 
 ### 4. Data Flow Pattern
@@ -83,8 +91,8 @@ graph TD
     subgraph "Public Access"
     R -->|GET /| LP[Landing Page]
     R -->|GET /about| AP[About Page]
-    R -->|GET /api/v1/items| LI[List Items]
-    R -->|GET /api/v1/studies| LS[List Studies]
+    R -->|GET /api/v1/modules| LI[List Modules]
+    R -->|GET /api/v1/courses| LS[List Courses]
     end
     
     LI -->|2. Returns| U
@@ -95,11 +103,11 @@ graph TD
     U -->|3. Login| A[Auth System]
     A -->|4. Token| U
     
-    U -->|5. POST new item| CPI[Create Item]
+    U -->|5. POST new module| CPI[Create Module]
     CPI -->|Save to DB| DB[(Database)]
     DB -->|6. Confirmation| U
     
-    U -->|7. Search items| SI[Search & Filter]
+    U -->|7. Search modules| SI[Search & Filter]
     SI -->|Query DB| DB
     DB -->|8. Results| U
 ```
@@ -121,7 +129,8 @@ graph TD
     YES -->|No| DENY[403 Forbidden]
     
     subgraph "Admin Privileges"
-    ADMIN -->|Create/Edit/Delete| AI[Admin Items]
+    ADMIN -->|Create/Edit/Delete| AI[Admin Modules]
+    ADMIN -->|Link/Unlink| AC[Admin Course-Module Links]
     ADMIN -->|Manage| AU[Admin Users]
     end
     
@@ -173,8 +182,10 @@ graph LR
 
 ```mermaid
 erDiagram
-    USER ||--o{ ITEM : "creates"
-    USER ||--o{ STUDY : "creates"
+    USER ||--o{ MODULE : creates
+    USER ||--o{ COURSE : creates
+    COURSE ||--o{ COURSE_MODULE : contains
+    MODULE ||--o{ COURSE_MODULE : belongs_to
     
     USER {
         string uid PK "Firebase UID"
@@ -187,7 +198,7 @@ erDiagram
         datetime updatedAt
     }
     
-    ITEM {
+    MODULE {
         string _id PK
         string title
         string shortDescription
@@ -200,7 +211,7 @@ erDiagram
         datetime updatedAt
     }
     
-    STUDY {
+    COURSE {
         string _id PK
         string title
         string shortDescription
@@ -210,6 +221,15 @@ erDiagram
         number price
         string image
         string createdBy FK
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    COURSE_MODULE {
+        string _id PK
+        string courseId FK
+        string moduleId FK
+        number order
         datetime createdAt
         datetime updatedAt
     }
@@ -223,7 +243,7 @@ erDiagram
 When you search for "React":
 - System checks title, description, and short description
 - Uses MongoDB's text search (fast!)
-- Returns matching items
+- Returns matching modules
 
 ### 2. Filter System
 Want only frontend courses under $50?
@@ -233,7 +253,7 @@ Want only frontend courses under $50?
 
 ### 3. Pagination
 Too many results?
-- System shows 10 items per page
+- System shows 10 modules per page
 - Easy navigation: `?page=2&limit=10`
 - Shows total count and pages available
 
@@ -284,7 +304,7 @@ Every API response looks the same:
 
 - **success** - Did it work? (true/false)
 - **message** - What happened (human-readable)
-- **data** - The actual information (items, user, etc.)
+- **data** - The actual information (modules, courses, users, etc.)
 - **meta** - Extra info (pagination, totals, etc.)
 
 ---
@@ -297,7 +317,7 @@ If something goes wrong:
    - "Title must be at least 3 characters"
 
 2. Not found → 404 Not Found
-   - "Item not found"
+   - "Module not found" or "Course not found"
 
 3. Not authorized → 401 Unauthorized / 403 Forbidden
    - "You don't have permission"
@@ -313,7 +333,7 @@ All errors include a clear message in the same format as successful responses.
 
 Built to grow:
 
-- **Modular**: Each feature is separate (items, studies, users)
+- **Modular**: Each feature is separate (modules, courses, users, course-module links)
 - **Layered**: Easy to change one part without breaking others
 - **Reusable**: Common logic in utilities (ApiFeatures, etc.)
 - **Documented**: Clear code structure and comments
@@ -326,13 +346,14 @@ Built to grow:
 StudyVault is a secure, well-structured backend that:
 
 ✅ Handles user authentication and authorization  
-✅ Manages study items and courses  
+✅ Manages learning modules and courses with many-to-many relationships  
+✅ Admin can link/unlink modules to courses  
 ✅ Provides powerful search and filtering  
 ✅ Protects against common security threats  
 ✅ Returns consistent, predictable responses  
 ✅ Logs everything for monitoring  
 ✅ Scales with your needs  
-✅ Follows clean architecture principles  
+✅ Follows clean architecture principles
 
 Made with modern tools and best practices!
 

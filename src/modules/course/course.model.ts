@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export interface IStudy extends Document {
+export interface ICourse extends Document {
   title: string;
   shortDescription: string;
   description: string;
@@ -9,11 +9,15 @@ export interface IStudy extends Document {
   price: number;
   image: string;
   createdBy: string;
+  modules: Array<{
+    module:mongoose.Types.ObjectId;
+    order: number;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const StudySchema = new Schema<IStudy>(
+const CourseSchema = new Schema<ICourse>(
   {
     title: { type: String, required: true },
     shortDescription: { type: String, required: true },
@@ -27,10 +31,16 @@ const StudySchema = new Schema<IStudy>(
     price: { type: Number, required: true, min: 0 },
     image: { type: String, required: true },
     createdBy: { type: String, required: true },
+    modules: [
+      {
+        module: { type: Schema.Types.ObjectId, required: true, ref: 'Module' },
+        order: { type: Number, required: true, min: 0 },
+      },
+    ],
   },
   { timestamps: true }
 );
 
-const Study = mongoose.model<IStudy>('Study', StudySchema);
+const Course = mongoose.model<ICourse>('Course', CourseSchema);
 
-export default Study;
+export default Course;
