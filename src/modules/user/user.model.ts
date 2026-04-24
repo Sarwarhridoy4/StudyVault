@@ -27,3 +27,5 @@ UserSchema.index({ role: 1 });
 const User = mongoose.model<IUser>('User', UserSchema);
 
 export default User;
+export type { IUser, UserRole } from './user.types';
+export type { UserCreateInput, UserResponse } from './user.types';
