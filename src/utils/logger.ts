@@ -1,10 +1,18 @@
 import winston from 'winston';
+import fs from 'fs';
+import path from 'path';
 import env from '../config/env';
 
 /**
  * Centralized logger configuration
  * Uses Winston for structured logging
  */
+
+// Ensure logs directory exists
+const logsDir = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
 
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
@@ -29,12 +37,12 @@ export const logger = winston.createLogger({
   transports: [
     // Write error logs only to error.log
     new winston.transports.File({
-      filename: 'logs/error.log',
+      filename: path.join(logsDir, 'error.log'),
       level: 'error',
     }),
     // Write all logs to combined.log
     new winston.transports.File({
-      filename: 'logs/combined.log',
+      filename: path.join(logsDir, 'combined.log'),
     }),
   ],
 });
