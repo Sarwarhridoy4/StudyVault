@@ -10,7 +10,6 @@ import publicRouter from './modules/public/public.route';
 import courseRouter from './modules/course/course.route';
 import moduleRouter from './modules/module/module.route';
 import adminRouter from './modules/admin/admin.route';
-import uploadRouter from './modules/upload/upload.route';
 import courseModuleRouter from './modules/coursemodule/coursemodule.route';
 
 const app = express();
@@ -76,9 +75,6 @@ app.use('/api/v1/courses', courseRouter);
 app.use('/api/v1/modules', moduleRouter);
 app.use('/api/v1/admin', adminRouter);
 app.use('/api/v1/coursemodule', courseModuleRouter);
-
-// Upload routes (centralized file upload)
-app.use('/api/v1/upload', uploadRouter);
 
 // Auth routes (to be implemented)
 // app.use('/api/v1/auth', authRouter);

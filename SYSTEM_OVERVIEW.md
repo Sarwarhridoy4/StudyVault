@@ -47,20 +47,23 @@ The system has different routes:
 - `POST /api/v1/courses` - Create course (requires admin)
 - `PATCH /api/v1/courses/:id` - Update course (requires admin)
 - `DELETE /api/v1/courses/:id` - Delete course (requires admin)
-- `POST /api/v1/upload` - Upload images (requires login)
-- `DELETE /api/v1/upload/:id` - Delete images (requires login)
 
 #### Admin Routes (Admin Role Required)
 - `GET /api/v1/admin/modules` - View all modules
 - `PATCH /api/v1/admin/modules/:id` - Edit any module
 - `DELETE /api/v1/admin/modules/:id` - Delete any module
 - `GET /api/v1/admin/courses` - View all courses
-- `POST /api/v1/coursemodule/link` - Link module to course
-- `DELETE /api/v1/coursemodule/unlink/:courseId/:moduleId` - Unlink module from course
-- `GET /api/v1/coursemodule/course/:courseId/modules` - Get course modules
-- `POST /api/v1/coursemodule/batch/link` - Batch link modules
-- `POST /api/v1/coursemodule/batch/unlink/:courseId` - Batch unlink modules
 - `GET /api/v1/admin/users` - View all users
+
+#### Course-Module Management Routes (Admin Role Required)
+- `GET /api/v1/coursemodule/courses/:courseId/modules` - Get modules linked to a course
+- `GET /api/v1/coursemodule/modules/:moduleId/courses` - Get courses linked to a module
+- `POST /api/v1/coursemodule/courses/:courseId/modules` - Link one module or batch link modules to a course
+- `DELETE /api/v1/coursemodule/courses/:courseId/modules/:moduleId` - Unlink one module from a course
+- `DELETE /api/v1/coursemodule/courses/:courseId/modules` - Batch unlink modules from a course
+- `POST /api/v1/coursemodule/link` - Legacy single-link endpoint kept for compatibility
+- `POST /api/v1/coursemodule/batch/link` - Legacy batch-link endpoint kept for compatibility
+- `POST /api/v1/coursemodule/batch/unlink/:courseId` - Legacy batch-unlink endpoint kept for compatibility
 
 ### 4. Data Flow Pattern
 
@@ -72,11 +75,12 @@ Request → Security Checks → Route → Controller → Service → Repository 
                                 Response ←
 ```
 
-1. **Controller** - Receives the request, validates input, calls the service
-2. **Service** - Contains business logic, processes data
-3. **Repository** - Talks to the database, performs CRUD operations
-4. **Database** - Stores or retrieves data
-5. **Response** - Returns formatted result to user
+1. **Route** - Maps the URL to the correct controller only
+2. **Controller** - Receives the request, validates/parses input, calls the service
+3. **Service** - Contains business logic, processes data, calls external services when needed
+4. **Repository** - Talks to the database, performs CRUD operations
+5. **Database** - Stores or retrieves data
+6. **Response** - Returns formatted result to user
 
 ---
 
@@ -130,7 +134,7 @@ graph TD
     
     subgraph "Admin Privileges"
     ADMIN -->|Create/Edit/Delete| AI[Admin Modules]
-    ADMIN -->|Link/Unlink| AC[Admin Course-Module Links]
+    ADMIN -->|Link/Unlink| AC[Course-Module Management]
     ADMIN -->|Manage| AU[Admin Users]
     end
     
@@ -261,9 +265,10 @@ Too many results?
 Uploading a course image?
 - Multer handles the file upload
 - Image saved to memory (temporarily)
-- Cloudinary stores it permanently
+- Service layer sends the file to Cloudinary
 - Gets back a URL to use
-- If database save fails, image is deleted (no orphans!)
+- Upload is not exposed as a standalone `/api/v1/upload` route
+- If database save fails, image cleanup runs to avoid orphaned files
 
 ### 5. Security
 Multiple layers of protection:
@@ -283,7 +288,7 @@ Multiple layers of protection:
 - **ODM**: Mongoose (talks to MongoDB)
 - **Validation**: Zod (checks data is correct)
 - **Security**: Helmet, CORS, Rate Limiter
-- **File Upload**: Multer + Cloudinary
+- **File Upload**: Multer middleware + Cloudinary service integration
 - **Logging**: Winston (records everything)
 - **Auth**: Firebase (handles user accounts)
 
@@ -334,7 +339,7 @@ All errors include a clear message in the same format as successful responses.
 Built to grow:
 
 - **Modular**: Each feature is separate (modules, courses, users, course-module links)
-- **Layered**: Easy to change one part without breaking others
+- **Layered**: Routes stay thin and pass work to controllers, services, and repositories
 - **Reusable**: Common logic in utilities (ApiFeatures, etc.)
 - **Documented**: Clear code structure and comments
 - **Tested**: Can add tests for each component
@@ -347,7 +352,8 @@ StudyVault is a secure, well-structured backend that:
 
 ✅ Handles user authentication and authorization  
 ✅ Manages learning modules and courses with many-to-many relationships  
-✅ Admin can link/unlink modules to courses  
+✅ Keeps routing thin with route → controller → service → repository flow  
+✅ Admin can link/unlink modules to courses through simpler course-module endpoints  
 ✅ Provides powerful search and filtering  
 ✅ Protects against common security threats  
 ✅ Returns consistent, predictable responses  
@@ -361,4 +367,3 @@ Made with modern tools and best practices!
 
 *Last updated: 2026-04-24*  
 *Version: 1.0.0*
-

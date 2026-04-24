@@ -2,7 +2,7 @@
 
 A production-ready REST API built with **TypeScript + Express.js + Bun** for the *StudyVault* learning platform.
 
-This backend provides secure, scalable, and modular APIs for managing **courses and learning modules** with filtering, file uploads, and comprehensive security hardening.
+This backend provides secure, scalable, and modular APIs for managing **courses and learning modules** with filtering, course-module relationships, and Cloudinary-backed image handling inside service flows.
 
 **Tech Stack:** TypeScript • Bun • Express.js • Mongoose • Zod • Helmet • CORS • Winston • Rate Limiting • Cloudinary
 
@@ -25,7 +25,7 @@ This backend provides secure, scalable, and modular APIs for managing **courses 
 - ✅ Production security hardening
 - ✅ Scalable modular architecture
 - ✅ Course-Module linking (many-to-many)
-- ✅ Admin: Link/unlink modules to courses (batch supported)
+- ✅ Admin: Link/unlink modules to courses with simplified endpoints (batch supported)
 
 ---
 
@@ -35,7 +35,7 @@ This backend provides secure, scalable, and modular APIs for managing **courses 
 - **Single Responsibility**: Each layer has exactly one job
 - **Centralized utilities**: `catchAsync`, `sendResponse`, `ApiFeatures`, `errorFormatter`
 - **Security middleware**: Helmet, CORS, rate limiting, sanitization
-- **Cloudinary integration**: Upload, transform, delete images
+- **Cloudinary integration**: Upload, transform, and delete images from service layer
 - **Validation layer**: Zod schemas with simplified error messages
 - **Centralized logging**: Winston logger with file + console transports
 - **Production-grade**: Error handling, security, monitoring ready
@@ -129,16 +129,20 @@ Expected response:
 ```json
 {
   "success": true,
-  "message": "Welcome to StudyVault Backend API",
-  "name": "StudyVault API",
-  "version": "1.0.0",
-  "environment": "development",
-  "timestamp": "2026-04-24T11:32:30.000Z",
-  "endpoints": {
-    "health": "/health",
-    "api": "/api/v1",
-    "studies": "/api/v1/studies"
-  }
+  "message": "Welcome to StudyVault",
+  "data": {
+    "name": "StudyVault API",
+    "version": "1.0.0",
+    "description": "A learning platform marketplace",
+    "endpoints": {
+      "health": "/health",
+      "courses": "/api/v1/courses",
+      "modules": "/api/v1/modules",
+      "courseModules": "/api/v1/coursemodule",
+      "about": "/about"
+    }
+  },
+  "meta": null
 }
 ```
 
@@ -165,30 +169,26 @@ Expected response:
 
 ## API Testing
 
-### Get All Studies
+### Get All Modules
 ```bash
-curl http://localhost:5000/api/v1/studies
+curl http://localhost:5000/api/v1/modules
 ```
 
-### Create a Study (Protected - requires auth)
+### Create a Course
 ```bash
-curl -X POST http://localhost:5000/api/v1/studies \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "React Basics",
-    "shortDescription": "Learn React fast",
-    "description": "Complete React course for beginners",
-    "category": "frontend",
-    "difficulty": "beginner",
-    "price": 0,
-    "image": "https://example.com/image.jpg",
-    "createdBy": "userId"
-  }'
+curl -X POST http://localhost:5000/api/v1/courses \
+  -F "title=React Basics" \
+  -F "shortDescription=Learn React fast" \
+  -F "description=Complete React course for beginners" \
+  -F "category=frontend" \
+  -F "difficulty=beginner" \
+  -F "price=0" \
+  -F "image=@./react-course.png"
 ```
 
 ### Search with Filters
 ```bash
-curl "http://localhost:5000/api/v1/studies?search=react&category=frontend&page=1&limit=10"
+curl "http://localhost:5000/api/v1/modules?search=react&category=frontend&page=1&limit=10"
 ```
 
 ## Tech Stack
@@ -242,6 +242,7 @@ src/
  │    └── CloudinaryError.ts         # Cloudinary upload errors
  ├── services/
  │    ├── cloudinary.service.ts      # Cloudinary upload/delete logic
+ │    ├── image.service.ts           # Upload helpers with rollback/cleanup
  │    └── email.service.ts           # Email service (future)
   ├── modules/
   │    ├── course/                     # Course module (CLEAN ARCHITECTURE)
@@ -262,8 +263,8 @@ src/
   │    │    ├── module.types.ts        # TypeScript interfaces
   │    │    └── module.validation.ts   # Zod schemas
   │    │
-  │    ├── coursemodule/               # Course-Module relationship (NEW)
-  │    │    ├── coursemodule.route.ts  # Admin routes for linking/unlinking
+  │    ├── coursemodule/               # Course-Module relationship
+  │    │    ├── coursemodule.route.ts  # Simplified link/unlink routes + legacy compatibility routes
   │    │    ├── coursemodule.controller.ts
   │    │    ├── coursemodule.service.ts
   │    │    ├── coursemodule.repository.ts
@@ -271,14 +272,21 @@ src/
   │    │    ├── coursemodule.types.ts
   │    │    └── coursemodule.validation.ts
   │    │
-  │    ├── admin/                      # Admin module (RBAC protected)
-  │    │    └── admin.route.ts         # Admin routes: /admin/modules, /admin/courses, /admin/coursemodule
+  │    ├── admin/                      # Admin module
+  │    │    ├── admin.route.ts         # Thin admin routes
+  │    │    ├── admin.controller.ts    # HTTP layer only
+  │    │    └── admin.service.ts       # Admin orchestration
   │    │
-  │    ├── public/                     # Public pages (no auth)
-  │    │    └── public.route.ts        # Routes: / (landing), /about
+  │    ├── public/                     # Public pages
+  │    │    ├── public.route.ts        # Routes: / and /about
+  │    │    ├── public.controller.ts   # HTTP layer only
+  │    │    └── public.service.ts      # Public page data
   │    │
-  │    └── upload/                     # File upload module
-  │         └── upload.route.ts        # Routes: POST /upload, DELETE /upload/:publicId
+  │    └── user/
+  │         ├── user.model.ts
+  │         ├── user.types.ts
+  │         ├── user.repository.ts
+  │         └── user.service.ts
  ├── emails/                        # Email templates (future)
  │    └── templates/                # EJS templates
  └── queue/                         # Background job queues (future)
@@ -320,7 +328,7 @@ graph TB
         end
 
         subgraph "External Services"
-            S1[Cloudinary<br/>Image Upload]
+            S1[Cloudinary<br/>Image Service]
             S2[Email Service<br/>Future: EJS + Queue]
         end
     end
@@ -339,7 +347,7 @@ graph TB
     E1 --> E2
     E2 --> E3
     E2 --> E4
-    H2 -.-> S1
+    H3 -.-> S1
     H2 -.-> S2
 
     H5 --> H3
@@ -427,20 +435,21 @@ sequenceDiagram
 
 ---
 
-### 3. Upload Image Flow (POST /api/v1/upload)
+### 3. Course Image Upload Flow (POST /api/v1/courses)
 
 ```mermaid
 graph TB
-    A[Client POST /api/v1/upload<br/>multipart/form-data] --> B[Multer Middleware<br/>memoryStorage]
+    A[Client POST /api/v1/courses<br/>multipart/form-data] --> B[Multer Middleware<br/>memoryStorage]
     B --> C{Validate?}
     C -->|Size > 5MB| D[400: File too large]
     C -->|Invalid MIME| E[400: Invalid file type]
     C -->|Valid| X[req.file.buffer]
-    X --> Y[Cloudinary Service<br/>uploadImage(buffer)]
-    Y --> H{Cloudinary?}
-    H -->|Success| I[200 { url: secure_url }]
+    X --> Y[Course Service<br/>createWithImageTransaction]
+    Y --> Z[Cloudinary Service<br/>uploadImage(buffer)]
+    Z --> H{Cloudinary?}
+    H -->|Success| I[201 Course created]
     H -->|Failed| J[500 CloudinaryError]
-    I --> K[Client receives URL]
+    I --> K[Client receives course with image URL]
 ```
 
 ---
@@ -760,15 +769,16 @@ graph LR
 | GET | `/api/v1/admin/modules` | Admin | View all modules |
 | PATCH | `/api/v1/admin/modules/:id` | Admin | Edit any module |
 | DELETE | `/api/v1/admin/modules/:id` | Admin | Delete any module |
-| POST | `/api/v1/coursemodule/link` | Admin | Link module to course |
-| DELETE | `/api/v1/coursemodule/unlink/:courseId/:moduleId` | Admin | Unlink module from course |
-| GET | `/api/v1/coursemodule/course/:courseId/modules` | Admin | Get course modules |
-| POST | `/api/v1/coursemodule/batch/link` | Admin | Batch link modules to course |
-| DELETE | `/api/v1/coursemodule/batch/unlink/:courseId` | Admin | Batch unlink modules from course |
 | GET | `/api/v1/admin/courses` | Admin | View all courses |
 | GET | `/api/v1/admin/users` | Admin | View all users |
-| POST | `/api/v1/upload` | User | Upload image |
-| DELETE | `/api/v1/upload/:publicId` | User | Delete image |
+| GET | `/api/v1/coursemodule/courses/:courseId/modules` | Admin | Get modules linked to a course |
+| GET | `/api/v1/coursemodule/modules/:moduleId/courses` | Admin | Get courses linked to a module |
+| POST | `/api/v1/coursemodule/courses/:courseId/modules` | Admin | Link one module or batch link modules |
+| DELETE | `/api/v1/coursemodule/courses/:courseId/modules/:moduleId` | Admin | Unlink one module from a course |
+| DELETE | `/api/v1/coursemodule/courses/:courseId/modules` | Admin | Batch unlink modules from a course |
+| POST | `/api/v1/coursemodule/link` | Admin | Legacy single-link endpoint |
+| POST | `/api/v1/coursemodule/batch/link` | Admin | Legacy batch-link endpoint |
+| POST | `/api/v1/coursemodule/batch/unlink/:courseId` | Admin | Legacy batch-unlink endpoint |
 
 ---
 
@@ -777,7 +787,7 @@ graph LR
 1. **Separate `types.ts` per module:** Keeps interfaces reusable across model, service, controller
 2. **Validation middleware:** Zod errors auto-caught & formatted by centralized errorHandler
 3. **Repository pattern:** All DB queries isolated, ApiFeatures reused across modules
-4. **Cloudinary centralized:** Single service file, reusable across modules
+4. **Cloudinary centralized:** Service helpers keep upload/delete logic out of controllers and routes
 5. **Error hierarchy:** AppError → AuthError, CloudinaryError, MongooseError helpers
 6. **No business logic in controllers:** Controllers only orchestrate, services handle logic
 7. **Consistent response format:** Every endpoint returns `{ success, message, data, meta }`
@@ -928,20 +938,21 @@ sequenceDiagram
 
 ---
 
-### 3. Upload Image Flow (POST /api/v1/upload)
+### 3. Course Image Upload Flow (POST /api/v1/courses)
 
 ```mermaid
 graph TB
-    A[Client POST /api/v1/upload<br/>multipart/form-data] --> B[Upload Middleware<br/>Multer.memoryStorage]
+    A[Client POST /api/v1/courses<br/>multipart/form-data] --> B[Upload Middleware<br/>Multer.memoryStorage]
     B --> C{Validate File?}
     C -->|Size > 5MB| D[400: File too large]
     C -->|Invalid MIME| E[400: Invalid file type]
     C -->|Valid| X[Buffer in req.file]
-    X --> Y[Cloudinary Service<br/>uploader.upload(buffer)]
-    Y --> H{Cloudinary Success?}
-    H -->|Success| I[200 { url: secure_url }]
+    X --> Y[Course Service<br/>image transaction helper]
+    Y --> Z[Cloudinary Service<br/>uploader.upload(buffer)]
+    Z --> H{Cloudinary Success?}
+    H -->|Success| I[201 Created]
     H -->|Failed| J[500 CloudinaryError]
-    I --> K[Client receives image URL]
+    I --> K[Client receives saved course]
 ```
 
 ---
@@ -1515,16 +1526,19 @@ DELETE /api/v1/courses/:id   Delete course (admin only - no auth check)
 **Routes exist but RBAC is NOT currently enforced.** Anyone can access these endpoints.
 
 ```
-GET  /api/v1/admin/modules                 View all modules
-PATCH /api/v1/admin/modules/:id            Edit any module
-DELETE /api/v1/admin/modules/:id           Delete any module
-GET  /api/v1/admin/courses                 View all courses
-POST /api/v1/coursemodule/link   Link module to course
-DELETE /api/v1/coursemodule/unlink/:courseId/:moduleId  Unlink module from course
-GET  /api/v1/coursemodule/course/:courseId/modules  Get course modules
-POST /api/v1/coursemodule/batch/link   Batch link modules
-POST /api/v1/coursemodule/batch/unlink/:courseId  Batch unlink modules
-GET  /api/v1/admin/users                  View all users
+GET  /api/v1/admin/modules                                View all modules
+PATCH /api/v1/admin/modules/:id                           Edit any module
+DELETE /api/v1/admin/modules/:id                          Delete any module
+GET  /api/v1/admin/courses                                View all courses
+GET  /api/v1/admin/users                                  View all users
+GET  /api/v1/coursemodule/courses/:courseId/modules       Get modules linked to a course
+GET  /api/v1/coursemodule/modules/:moduleId/courses       Get courses linked to a module
+POST /api/v1/coursemodule/courses/:courseId/modules       Link one or many modules to a course
+DELETE /api/v1/coursemodule/courses/:courseId/modules/:moduleId  Unlink one module from a course
+DELETE /api/v1/coursemodule/courses/:courseId/modules     Batch unlink modules from a course
+POST /api/v1/coursemodule/link                            Legacy single-link endpoint
+POST /api/v1/coursemodule/batch/link                      Legacy batch-link endpoint
+POST /api/v1/coursemodule/batch/unlink/:courseId          Legacy batch-unlink endpoint
 ```
 
 **To enable protection:**
@@ -1533,12 +1547,13 @@ GET  /api/v1/admin/users                  View all users
 
 ---
 
-## File Upload (Public - Auth Recommended)
+## File Upload
 
-```
-POST /api/v1/upload      Upload image to Cloudinary (no auth)
-DELETE /api/v1/upload/:publicId  Delete Cloudinary image (no auth)
-```
+There is no standalone `/api/v1/upload` endpoint anymore.
+
+- Course image uploads happen in `POST /api/v1/courses` and `PATCH /api/v1/courses/:id`
+- Multer parses the multipart file
+- Service helpers upload to Cloudinary and handle cleanup/rollback when needed
 
 ---
 
@@ -1596,9 +1611,9 @@ GET  /api/v1/auth/me
 ### Protected Routes (Partially Implemented ⚠️)
 - Auth middleware skeleton exists (`src/middlewares/auth.ts`)
 - RBAC middleware skeleton exists (`src/middlewares/rbac.ts`)
-- **NOT enforced** on any routes (auth module not built)
+- Partially wired in routes, but middleware logic is still placeholder-only
 - Item create/update/delete routes currently open
-- Admin routes currently open
+- Admin and course-module routes currently rely on placeholder auth/RBAC implementations
 
 ---
 
