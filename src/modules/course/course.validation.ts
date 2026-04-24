@@ -7,11 +7,11 @@ export const createCourseSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
   price: z.number().min(0, 'Price must be non-negative'),
-  image: z.string().url('Image must be a valid URL'),
+  image: z.string().url('Image must be a valid URL').optional(),
   createdBy: z.string().min(1, 'createdBy is required'),
 });
 
 export const updateCourseSchema = createCourseSchema.partial();
 
-export type CreateCourseInput = z.infer<typeof createCourseSchema>;
-export type UpdateCourseInput = z.infer<typeof updateCourseSchema>;
+export type CreateCourseInput = z.infer<typeof createCourseSchema> & { imageFile?: Buffer };
+export type UpdateCourseInput = z.infer<typeof updateCourseSchema> & { imageFile?: Buffer };

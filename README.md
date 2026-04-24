@@ -16,6 +16,8 @@ This backend provides secure, scalable, and modular APIs for managing **courses 
 - ⚠️ Role-Based Access Control (RBAC middleware ready, auth not implemented)
 - ⚠️ Firebase Auth-ready middleware (auth not implemented)
 - ✅ Cloud image upload & deletion (Cloudinary)
+- ✅ **Transaction rollback for image uploads** (Cloudinary → DB atomicity)
+- ✅ Automatic Cloudinary cleanup on course delete
 - ✅ Centralized error handling (Zod, Mongoose, Multer)
 - ✅ Input sanitization (XSS protection)
 - ✅ Rate limiting (brute-force protection)
@@ -23,6 +25,7 @@ This backend provides secure, scalable, and modular APIs for managing **courses 
 - ✅ Production security hardening
 - ✅ Scalable modular architecture
 - ✅ Course-Module linking (many-to-many)
+- ✅ Admin: Link/unlink modules to courses (batch supported)
 
 ---
 
