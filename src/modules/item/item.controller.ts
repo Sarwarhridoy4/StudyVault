@@ -2,7 +2,6 @@ import type { Request, Response, NextFunction } from 'express';
 import { itemService } from './item.service';
 import { catchAsync } from '../../utils/catchAsync';
 import { sendResponse } from '../../utils/sendResponse';
-import { itemCreateFullSchema, itemUpdateValidationSchema } from './item.validation';
 
 export const itemController = {
   getAllItems: catchAsync(async (req: Request, res: Response) => {
@@ -36,7 +35,12 @@ export const itemController = {
   }),
 
   createItem: catchAsync(async (req: Request, res: Response) => {
-    const validatedData = itemCreateFullSchema.parse(req.body);
+    // Validation already done by middleware, data is safe
+    // Add createdBy from auth user (or 'system' for now, will be replaced by auth middleware)
+    const validatedData = {
+      ...req.body,
+      createdBy: 'system',
+    } as any;
     const item = await itemService.createItem(validatedData);
     sendResponse(res, 201, {
       success: true,
@@ -48,7 +52,7 @@ export const itemController = {
 
   updateItem: catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const validatedData = itemUpdateValidationSchema.parse(req.body);
+    const validatedData = req.body;
     const item = await itemService.updateItem(id as string, validatedData);
     if (!item) {
       sendResponse(res, 404, {

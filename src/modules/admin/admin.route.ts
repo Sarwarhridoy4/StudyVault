@@ -5,15 +5,16 @@ import Item from '../item/item.model';
 import User from '../user/user.model';
 import type { IItem } from '../item/item.model';
 import type { IUser } from '../user/user.model';
+import { itemService } from '../item/item.service';
 
 const router = Router();
 
-// Admin: Get all items (global control)
+// Admin: Get all items (global control) with filtering
 router.get(
   '/items',
-  catchAsync(async (_req, res) => {
+  catchAsync(async (req, res) => {
     // TODO: Add admin authorization middleware
-    const items = await Item.find().lean<IItem[]>();
+    const items = await itemService.getAllItems(req.query as Record<string, unknown>);
     return sendResponse(res, 200, {
       success: true,
       message: 'All items retrieved',
@@ -29,7 +30,7 @@ router.delete(
   catchAsync(async (req, res) => {
     // TODO: Add admin authorization middleware
     const { id } = req.params;
-    await Item.findByIdAndDelete(id);
+    await itemService.deleteItem(id as string);
     return sendResponse(res, 200, {
       success: true,
       message: 'Item deleted successfully',
@@ -45,7 +46,7 @@ router.patch(
   catchAsync(async (req, res) => {
     // TODO: Add admin authorization middleware
     const { id } = req.params;
-    const item = await Item.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+    const item = await itemService.updateItem(id as string, req.body);
     return sendResponse(res, 200, {
       success: true,
       message: 'Item updated successfully',
@@ -60,7 +61,7 @@ router.get(
   '/users',
   catchAsync(async (_req, res) => {
     // TODO: Add admin authorization middleware
-    const users = await User.find().select('-__v').lean<IUser[]>();
+    const users = await User.find().select('-__v -password').lean<IUser[]>();
     return sendResponse(res, 200, {
       success: true,
       message: 'All users retrieved',

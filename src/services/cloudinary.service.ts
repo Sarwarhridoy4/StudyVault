@@ -13,7 +13,7 @@ export const uploadImage = async (file: Buffer | string, folder: string = 'study
       ],
     };
 
-    const result = await cloudinary.uploader.upload(file, uploadOptions);
+    const result = await (cloudinary.uploader.upload as (file: Buffer | string, options?: any) => Promise<any>)(file, uploadOptions);
     return result.secure_url;
   } catch (error) {
     console.error('Cloudinary upload error:', error);
