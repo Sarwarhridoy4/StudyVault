@@ -55,6 +55,9 @@ const auth = async (req: AuthenticatedRequest, res: Response, next: NextFunction
         throw new AuthError('Invalid authorization header format');
       }
       const token = parts[1];
+      if (!token) {
+        throw new AuthError('Invalid authorization header format');
+      }
       const decodedToken = await verifyIdToken(token);
       const uid = decodedToken.uid;
 

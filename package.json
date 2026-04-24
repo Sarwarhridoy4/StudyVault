@@ -21,8 +21,10 @@
     "@types/morgan": "^1.9.10",
     "@types/multer": "^2.1.0",
     "@types/node": "^25.6.0",
+    "@types/nodemailer": "^8.0.0",
     "@types/uuid": "^11.0.0",
     "@types/winston": "^2.4.4",
+    "ejs": "^5.0.2",
     "nodemon": "^3.1.14"
   },
   "peerDependencies": {
@@ -43,6 +45,7 @@
     "mongoose": "^9.5.0",
     "morgan": "^1.10.1",
     "multer": "^2.1.1",
+    "nodemailer": "^8.0.6",
     "uuid": "^14.0.0",
     "winston": "^3.19.0",
     "zod": "^4.3.6"

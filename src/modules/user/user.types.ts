@@ -9,6 +9,8 @@ export interface IUser extends Document {
   role: UserRole;
   emailVerified: boolean;
   authProvider: 'firebase' | 'local';
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -43,8 +45,15 @@ export type LocalLoginInput = {
   password: string;
 };
 
-// Local login input
-export type LocalLoginInput = {
+// Forgot password input
+export type ForgotPasswordInput = {
   email: string;
-  password: string;
+};
+
+// Reset password input
+export type ResetPasswordInput = {
+  email: string;
+  token: string;
+  newPassword: string;
+  confirmPassword: string;
 };

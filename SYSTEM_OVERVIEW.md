@@ -39,6 +39,17 @@ The system has different routes:
 - `GET /api/v1/courses` - List all courses
 - `GET /api/v1/courses/:id` - View specific course with linked modules
 
+#### Authentication Routes (Public – No auth required)
+- `POST /api/v1/auth/firebase` – Google OAuth login/register (Firebase ID token)
+- `POST /api/v1/auth/register` – Create local email/password account
+- `POST /api/v1/auth/login` – Sign in with email/password (creates session)
+- `POST /api/v1/auth/logout` – Destroy session
+- `POST /api/v1/auth/forgot-password` – Request password reset email
+- `POST /api/v1/auth/reset-password` – Reset password with token
+- `GET /api/v1/auth/me` – Get current user profile (auth required)
+- `PATCH /api/v1/auth/me` – Update profile (auth required)
+- `DELETE /api/v1/auth/me` – Delete account (auth required)
+
 #### Protected Routes (Authentication Required)
 - `POST /api/v1/modules/add` - Create new module (requires login)
 - `PATCH /api/v1/modules/:id` - Update own module (requires login)

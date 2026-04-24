@@ -91,11 +91,22 @@ bun install
    SESSION_SECRET=your-session-secret-key-change-in-production
    SESSION_MAX_AGE=604800000
 
-   # Firebase (required for Google/SSO login)
-   FIREBASE_PROJECT_ID=your_firebase_project_id
-   FIREBASE_CLIENT_EMAIL=your_firebase_client_email
-   FIREBASE_PRIVATE_KEY=your_firebase_private_key
-   ```
+    # Firebase (required for Google/SSO login)
+    FIREBASE_PROJECT_ID=your_firebase_project_id
+    FIREBASE_CLIENT_EMAIL=your_firebase_client_email
+    FIREBASE_PRIVATE_KEY=your_firebase_private_key
+
+    # Email (for password reset)
+    EMAIL_HOST=smtp.example.com
+    EMAIL_PORT=587
+    EMAIL_SECURE=false
+    EMAIL_USER=noreply@example.com
+    EMAIL_PASS=your_email_password
+    EMAIL_FROM=StudyVault <noreply@example.com>
+
+    # Frontend URL (used in reset-password email link)
+    FRONTEND_URL=http://localhost:3000
+    ```
 
 ---
 
@@ -208,6 +219,21 @@ curl -X POST http://localhost:5000/api/v1/auth/firebase \
   -d '{"idToken":"<FIREBASE_ID_TOKEN_FROM_CLIENT>"}'
 ```
 
+#### Forgot Password (Email-based reset)
+```bash
+curl -X POST http://localhost:5000/api/v1/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com"}'
+```
+In development, the response includes a `meta.token` field containing the reset token for testing. In production, only an email is sent.
+
+#### Reset Password
+```bash
+curl -X POST http://localhost:5000/api/v1/auth/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","token":"<token_from_email>","newPassword":"NewSecurePass123","confirmPassword":"NewSecurePass123"}'
+```
+
 ### Create a Module (requires authentication)
 ```bash
 curl -b cookies.txt -X POST http://localhost:5000/api/v1/modules/add \
@@ -232,7 +258,10 @@ curl -b cookies.txt -X POST http://localhost:5000/api/v1/modules/add \
 | **dompurify** | XSS sanitization |
 | **Cloudinary** | Image upload & CDN |
 | **Multer** | Multipart form data parsing |
-| **email.service.ts** | Email service (future) |
+| **Nodemailer** | Email transport (password reset) |
+| **EJS** | Email templating |
+| **express-session** | Session management for local auth |
+| **connect-mongodb-session** | MongoDB session store |
 
 ---
 
@@ -263,6 +292,8 @@ Classic username/password auth with HTTP-only cookies.
 - `POST /api/v1/auth/register` – create account
 - `POST /api/v1/auth/login` – sign in (creates session)
 - `POST /api/v1/auth/logout` – destroy session
+- `POST /api/v1/auth/forgot-password` – request password reset email
+- `POST /api/v1/auth/reset-password` – reset password with token
 - `GET /api/v1/auth/me` – get current user
 - `PATCH /api/v1/auth/me` – update profile
 - `DELETE /api/v1/auth/me` – delete account
@@ -271,6 +302,14 @@ Classic username/password auth with HTTP-only cookies.
 - Sessions are stored in MongoDB via `connect-mongodb-session`.
 - Session cookie is HTTP-only, Secure in production, SameSite=Lax.
 - Default expiry: 7 days (`SESSION_MAX_AGE` in env).
+
+**Password Reset Flow:**
+1. User calls `POST /api/v1/auth/forgot-password` with their email.
+2. If account exists and uses local auth, system generates a secure token (valid 1 hour) and sends a password reset link to the user's email.
+3. User clicks link in email → frontend routes to `/reset-password?token=ABC123`.
+4. Frontend collects `email`, `token`, `newPassword`, `confirmPassword` and calls `POST /api/v1/auth/reset-password`.
+5. On success, user can log in with new password.
+6. For security, the reset token is single-use and expires after 1 hour.
 
 ### Protected Routes
 

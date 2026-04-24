@@ -39,6 +39,27 @@ curl -X POST http://localhost:5000/api/v1/auth/firebase \
 
 ---
 
+### Password Reset (Local accounts only)
+
+```bash
+# 1. Request reset link (sends email)
+curl -X POST http://localhost:5000/api/v1/auth/forgot-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com"}'
+
+# 2. Reset password using token from email
+curl -X POST http://localhost:5000/api/v1/auth/reset-password \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","token":"<token_from_email>","newPassword":"NewPass123","confirmPassword":"NewPass123"}'
+```
+
+**Notes:**
+- Only works for local email/password accounts (not Firebase).
+- Reset token expires in 1 hour.
+- In development, the `forgot-password` response includes `meta.token` for testing (omitted in production).
+
+---
+
 ## Course Creation (Image Required!)
 
 **Note:** `createdBy` is automatically set from the authenticated user; do NOT provide it in the request.

@@ -130,6 +130,81 @@ Destroy the current session.
 
 ---
 
+### `POST /api/v1/auth/forgot-password`
+
+Request a password reset link via email.
+
+**Public endpoint – no authentication required**
+
+**Headers:** `Content-Type: application/json`
+
+**Body:**
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "If an account exists with that email, you will receive a password reset link.",
+  "data": null,
+  "meta": null
+}
+```
+
+**Dev mode note:** In development (`NODE_ENV=development`), the response includes a `token` field in `meta` for testing purposes. This is omitted in production.
+
+**Behavior:**
+- If the email exists and belongs to a local account, a password reset email is sent with a link containing a secure token.
+- If the email belongs to a Firebase-authenticated user, or if the email doesn't exist, the same generic success message is returned to prevent email enumeration attacks.
+- Reset tokens expire after 1 hour and are stored with a TTL index in MongoDB.
+
+---
+
+### `POST /api/v1/auth/reset-password`
+
+Reset password using token from email.
+
+**Public endpoint – no authentication required**
+
+**Headers:** `Content-Type: application/json`
+
+**Body:**
+```json
+{
+  "email": "user@example.com",
+  "token": "reset_token_from_email_link",
+  "newPassword": "newSecurePassword123",
+  "confirmPassword": "newSecurePassword123"
+}
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "Password has been reset successfully. You can now log in with your new password.",
+  "data": null,
+  "meta": null
+}
+```
+
+**Errors:**
+- `400` if token is invalid or expired.
+- `400` if passwords don't match.
+- `400` if account uses Firebase authentication (must use Google sign-in).
+
+**Flow:**
+1. User clicks reset link from email (URL format: `FRONTEND_URL/reset-password?token=ABC123`)
+2. Frontend collects `email`, `token`, `newPassword`, `confirmPassword`
+3. Frontend calls this endpoint
+4. On success, user can log in with new password.
+
+---
+
 ### `GET /api/v1/auth/me`
 
 Get the currently authenticated user's profile.

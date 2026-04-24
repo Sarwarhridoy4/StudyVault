@@ -3,7 +3,7 @@ import type { IUser, UserRole, UserCreateInput, UserResponse } from './user.type
 
 const UserSchema = new Schema<IUser>(
   {
-    uid: { type: String, required: true, unique: true },
+    uid: { type: String, required: true, unique: true, default: () => `local_${new mongoose.Types.ObjectId()}` },
     email: { type: String, required: true, lowercase: true, trim: true, unique: true },
     displayName: { type: String, trim: true },
     photoURL: { type: String },
@@ -19,13 +19,19 @@ const UserSchema = new Schema<IUser>(
       enum: ['firebase', 'local'],
       default: 'local'
     },
+    // Password reset fields
+    resetPasswordToken: { type: String },
+    resetPasswordExpires: { type: Date },
   },
   {
     timestamps: true,
   }
 );
 
-// Note: Unique indexes on uid and email are already created via schema `unique: true`
+// Additional indexes for performance (unique indexes already created via schema)
+UserSchema.index({ role: 1 });
+UserSchema.index({ resetPasswordToken: 1 }, { unique: true, sparse: true });
+UserSchema.index({ resetPasswordExpires: 1 }, { expireAfterSeconds: 0 }); // TTL index
 
 const User = mongoose.model<IUser>('User', UserSchema);
 

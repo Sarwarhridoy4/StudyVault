@@ -11,8 +11,16 @@ const env = {
   FIREBASE_PRIVATE_KEY: process.env.FIREBASE_PRIVATE_KEY || '',
   // Session secret for cookie-based auth
   SESSION_SECRET: process.env.SESSION_SECRET || 'your-session-secret-key-change-in-production',
-  // Session expiry in ms (default 7 days)
   SESSION_MAX_AGE: parseInt(process.env.SESSION_MAX_AGE || '604800000', 10),
+  // Email configuration (Nodemailer)
+  EMAIL_HOST: process.env.EMAIL_HOST || 'smtp.example.com',
+  EMAIL_PORT: parseInt(process.env.EMAIL_PORT || '587', 10),
+  EMAIL_SECURE: process.env.EMAIL_SECURE === 'true',
+  EMAIL_USER: process.env.EMAIL_USER || 'noreply@example.com',
+  EMAIL_PASS: process.env.EMAIL_PASS || '',
+  EMAIL_FROM: process.env.EMAIL_FROM || 'StudyVault <noreply@example.com>',
+  // Frontend URL for reset link
+  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
 };
 
 export default env;

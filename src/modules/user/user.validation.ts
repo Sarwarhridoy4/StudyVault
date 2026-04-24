@@ -25,6 +25,28 @@ export const localLoginSchema = z.object({
 });
 
 /**
+ * Schema for forgot password request
+ */
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
+/**
+ * Schema for reset password
+ */
+export const resetPasswordSchema = z
+  .object({
+    email: z.string().email('Invalid email address'),
+    token: z.string().min(1, 'Reset token is required'),
+    newPassword: z.string().min(6, 'Password must be at least 6 characters'),
+    confirmPassword: z.string().min(1, 'Confirm password is required'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  });
+
+/**
  * Schema for updating user profile
  * All fields optional
  */
@@ -40,4 +62,6 @@ export const updateProfileSchema = z.object({
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LocalRegisterInput = z.infer<typeof localRegisterSchema>;
 export type LocalLoginInput = z.infer<typeof localLoginSchema>;
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

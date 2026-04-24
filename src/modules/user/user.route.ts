@@ -7,7 +7,9 @@ import {
   registerSchema,
   localRegisterSchema,
   localLoginSchema,
-  updateProfileSchema
+  updateProfileSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from './user.validation';
 
 const router = Router();
@@ -35,6 +37,21 @@ router.post(
   sanitizeBody(['email']),
   validate(localLoginSchema),
   userController.localLogin
+);
+
+// Forgot password (no auth required)
+router.post(
+  '/forgot-password',
+  sanitizeBody(['email']),
+  validate(forgotPasswordSchema),
+  userController.forgotPassword
+);
+
+// Reset password (no auth required)
+router.post(
+  '/reset-password',
+  validate(resetPasswordSchema),
+  userController.resetPassword
 );
 
 // ==================== PROTECTED ROUTES ====================
