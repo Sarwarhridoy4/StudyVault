@@ -413,9 +413,9 @@ graph TB
     B --> C{Validate?}
     C -->|Size > 5MB| D[400: File too large]
     C -->|Invalid MIME| E[400: Invalid file type]
-    C -->|Valid| F[req.file.buffer]
-    F --> G[Cloudinary Service<br/>uploadImage(buffer)]
-    G --> H{Cloudinary?}
+    C -->|Valid| X[req.file.buffer]
+    X --> Y[Cloudinary Service<br/>uploadImage(buffer)]
+    Y --> H{Cloudinary?}
     H -->|Success| I[200 { url: secure_url }]
     H -->|Failed| J[500 CloudinaryError]
     I --> K[Client receives URL]
@@ -545,12 +545,12 @@ graph TB
 graph LR
     A[Incoming Request] --> B{Firebase Token<br/>Valid?}
     B -->|No| C[401 Unauthorized]
-    B -->|Yes| D[Attach req.user<br/>{uid, email, role}]
+    B -->|Yes| D[Attach req.user<br/>(uid, email, role)]
     D --> E{Role Check<br/>Required: USER?}
-    E -->|Has Role| F[✅ Controller → Service]
-    E -->|Missing Role| G[403 Forbidden]
+    E -->|Has Role| M[✅ Controller → Service]
+    E -->|Missing Role| N[403 Forbidden]
     C --> H[errorHandler<br/>JSON Response]
-    G --> H
+    N --> H
 ```
 
 ---
@@ -594,14 +594,14 @@ graph TD
     B --> C[Controller]
     C --> D[Service]
     D --> E[Repository]
-    E --> F[ApiFeatures Builder]
-    
-    F --> F1[.search(['title','shortDescription','description'])]
-    F1 --> F2[.filter()<br/>category, priceMin/priceMax]
-    F2 --> F3[.sort()<br/>default: -createdAt]
-    F3 --> F4[.paginate()<br/>page, limit]
-    F4 --> G[MongoDB Query]
-    G --> H[Execute]
+    E --> Q[ApiFeatures Builder]
+     
+    Q --> Q1[.search(['title','shortDescription','description'])]
+    Q1 --> Q2[.filter()<br/>category, priceMin/priceMax]
+    Q2 --> Q3[.sort()<br/>default: -createdAt]
+    Q3 --> Q4[.paginate()<br/>page, limit]
+    Q4 --> Z[MongoDB Query]
+    Z --> H[Execute]
     H --> I[Response:<br/>{success, data: items, meta}]
     
     I --> J[Client receives<br/>paginated, filtered items]
@@ -813,9 +813,9 @@ graph TB
     B --> C{Validate File?}
     C -->|Size > 5MB| D[400: File too large]
     C -->|Invalid MIME| E[400: Invalid file type]
-    C -->|Valid| F[Buffer in req.file]
-    F --> G[Cloudinary Service<br/>uploader.upload(buffer)]
-    G --> H{Cloudinary Success?}
+    C -->|Valid| X[Buffer in req.file]
+    X --> Y[Cloudinary Service<br/>uploader.upload(buffer)]
+    Y --> H{Cloudinary Success?}
     H -->|Success| I[200 { url: secure_url }]
     H -->|Failed| J[500 CloudinaryError]
     I --> K[Client receives image URL]
@@ -946,11 +946,11 @@ graph TB
 graph LR
     A[Request Arrives] --> B{Auth Middleware<br/>Verify Firebase Token}
     B -->|Invalid| C[401 Unauthorized]
-    B -->|Valid| D[Attach req.user<br/>{uid, email, role}]
+    B -->|Valid| D[Attach req.user<br/>(uid, email, role)]
     D --> E{RBAC Middleware<br/>Check Role}
-    E -->|User has role| F[✅ Allow]
-    E -->|Missing role| G[403 Forbidden]
-    F --> H[Controller → Service]
+    E -->|User has role| P[✅ Allow]
+    E -->|Missing role| Q[403 Forbidden]
+    P --> H[Controller → Service]
 ```
 
 ---
@@ -996,14 +996,14 @@ graph TD
     B --> C[Controller]
     C --> D[Service]
     D --> E[Repository]
-    E --> F[ApiFeatures Builder]
-    
-    F --> F1[search(['title','description'])]
-    F1 --> F2[filter(category, priceMin, priceMax)]
-    F2 --> F3[sort(createdAt, price)]
-    F3 --> F4[paginate(limit, skip)]
-    F4 --> G[MongoDB Query Built]
-    G --> H[Execute & Return]
+    E --> Q[ApiFeatures Builder]
+     
+    Q --> Q1[search(['title','description'])]
+    Q1 --> Q2[filter(category, priceMin/priceMax)]
+    Q2 --> Q3[sort(createdAt, price)]
+    Q3 --> Q4[paginate(limit, skip)]
+    Q4 --> Z[MongoDB Query Built]
+    Z --> H[Execute & Return]
     
     H --> I[Response with meta:<br/>{page, limit, total, totalPages}]
 ```
