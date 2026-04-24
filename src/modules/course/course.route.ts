@@ -19,7 +19,7 @@ router.post(
   auth,
   rbac,
   upload.single('image'),
-  sanitizeBody(['title', 'shortDescription', 'description', 'category', 'difficulty', 'price', 'createdBy']),
+  sanitizeBody(['title', 'shortDescription', 'description', 'category', 'difficulty', 'price', 'createdBy', 'image']),
   validate(createCourseSchema),
   CourseController.createCourse
 );
@@ -29,7 +29,7 @@ router.patch(
   auth,
   rbac,
   upload.single('image'),
-  sanitizeBody(['title', 'shortDescription', 'description', 'category', 'difficulty', 'price']),
+  sanitizeBody(['title', 'shortDescription', 'description', 'category', 'difficulty', 'price', 'image']),
   validate(updateCourseSchema),
   CourseController.updateCourse
 );

@@ -285,10 +285,13 @@ Required fields:
 - `difficulty` = `beginner | intermediate | advanced`
 - `price`
 - `createdBy`
+- **`image`** – required. Either:
+  - Upload as file (`multipart/form-data` with `-F "image=@file.jpg"`), OR
+  - Provide as text URL (`-F "image=https://..."`)
 
-Optional:
-- `image` as text URL
-- `image` as uploaded file
+**Error responses:**
+- `400` if neither file nor URL is provided
+- `400` if validation fails (invalid URL format, missing other fields, etc.)
 
 Example multipart fields:
 ```text
@@ -523,6 +526,7 @@ Example payload:
 
 ### `POST /api/v1/coursemodule/batch/link`
 Legacy batch-link endpoint.
+**Returns:** 201 Created
 
 Example payload:
 ```json
@@ -571,14 +575,14 @@ Example payload:
 ### Course create body
 ```json
 {
-  "title": "string, min 3",
-  "shortDescription": "string, min 10",
-  "description": "string, min 20",
-  "category": "string",
-  "difficulty": "beginner | intermediate | advanced",
-  "price": 0,
-  "image": "valid URL, optional",
-  "createdBy": "string"
+  "title": "string, min 3, required",
+  "shortDescription": "string, min 10, required",
+  "description": "string, min 20, required",
+  "category": "string, required",
+  "difficulty": "beginner | intermediate | advanced, required",
+  "price": "number, >= 0, required",
+  "image": "string (valid URL), required",
+  "createdBy": "string, required"
 }
 ```
 

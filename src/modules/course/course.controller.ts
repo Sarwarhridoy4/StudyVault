@@ -7,6 +7,17 @@ import { createCourseSchema, updateCourseSchema } from './course.validation';
 export const CourseController = {
   createCourse: catchAsync(async (req: Request, res: Response) => {
     const validatedData = createCourseSchema.parse(req.body);
+
+    // Enforce image requirement: either image URL in body OR image file upload
+    if (!validatedData.image && !req.file) {
+      return sendResponse(res, 400, {
+        success: false,
+        message: 'Image is required: provide an image URL in the "image" field or upload an image file',
+        data: null,
+        meta: null,
+      });
+    }
+
     const result = await CourseService.createCourse({
       ...validatedData,
       imageFile: (req.file as Express.Multer.File)?.buffer,

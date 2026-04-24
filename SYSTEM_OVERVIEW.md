@@ -44,7 +44,7 @@ The system has different routes:
 - `PATCH /api/v1/modules/:id` - Update own module (requires login)
 - `DELETE /api/v1/modules/:id` - Delete own module (requires login)
 - `GET /api/v1/modules/manage` - Get user's modules (requires login)
-- `POST /api/v1/courses` - Create course (requires admin)
+- `POST /api/v1/courses` - Create course (requires admin) — **image required** (file upload or URL)
 - `PATCH /api/v1/courses/:id` - Update course (requires admin)
 - `DELETE /api/v1/courses/:id` - Delete course (requires admin)
 
