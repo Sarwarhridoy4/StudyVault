@@ -7,7 +7,10 @@ import { createCourseSchema, updateCourseSchema } from './course.validation';
 export const CourseController = {
   createCourse: catchAsync(async (req: Request, res: Response) => {
     const validatedData = createCourseSchema.parse(req.body);
-    const result = await CourseService.createCourse(validatedData);
+    const result = await CourseService.createCourse({
+      ...validatedData,
+      imageFile: (req.file as Express.Multer.File)?.buffer,
+    });
     sendResponse(res, 201, {
       success: true,
       message: 'Course created successfully',
@@ -31,8 +34,8 @@ export const CourseController = {
     });
   }),
 
-  getAllCourses: catchAsync(async (_req: Request, res: Response) => {
-    const result = await CourseService.getAllCourses();
+  getAllCourses: catchAsync(async (req: Request, res: Response) => {
+    const result = await CourseService.getAllCourses(req.query as Record<string, unknown>);
     sendResponse(res, 200, {
       success: true,
       message: 'Courses retrieved successfully',
@@ -44,7 +47,10 @@ export const CourseController = {
   updateCourse: catchAsync(async (req: Request, res: Response) => {
     const id = req.params.id as string;
     const validatedData = updateCourseSchema.parse(req.body);
-    const result = await CourseService.updateCourse(id, validatedData);
+    const result = await CourseService.updateCourse(id, {
+      ...validatedData,
+      imageFile: (req.file as Express.Multer.File)?.buffer,
+    });
     if (!result) {
       sendResponse(res, 404, { success: false, message: 'Course not found', data: null, meta: null });
       return;

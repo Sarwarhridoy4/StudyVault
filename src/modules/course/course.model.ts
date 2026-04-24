@@ -8,9 +8,10 @@ export interface ICourse extends Document {
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   price: number;
   image: string;
+  imagePublicId?: string;  // Store Cloudinary public_id for image management
   createdBy: string;
   modules: Array<{
-    module:mongoose.Types.ObjectId;
+    module: mongoose.Types.ObjectId;
     order: number;
   }>;
   createdAt: Date;
@@ -30,6 +31,7 @@ const CourseSchema = new Schema<ICourse>(
     },
     price: { type: Number, required: true, min: 0 },
     image: { type: String, required: true },
+    imagePublicId: { type: String },
     createdBy: { type: String, required: true },
     modules: [
       {
