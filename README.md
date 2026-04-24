@@ -1,10 +1,10 @@
 # 📚 StudyVault Backend API
 
-A production-ready REST API built with **Node.js + Express.js** for the *StudyVault* learning platform.
+A production-ready REST API built with **TypeScript + Express.js + Bun** for the *StudyVault* learning platform.
 
 This backend provides secure, scalable, and modular APIs for managing **study items (courses / learning modules)** with authentication, filtering, file uploads, and role-based access control.
 
-Built with :contentReference[oaicite:0]{index=0}
+**Tech Stack:** TypeScript • Bun • Express.js • Mongoose • Zod • Helmet • CORS • Morgan
 
 ---
 
@@ -92,11 +92,49 @@ bun run build
 
 ## Verifying the Installation
 
-Once the server is running, test the health endpoint:
+Once the server is running, test the endpoints:
+
+### Root Endpoint (Welcome Message)
+```bash
+curl http://localhost:5000/
+```
+Expected response:
+```json
+{
+  "success": true,
+  "message": "Welcome to StudyVault Backend API",
+  "name": "StudyVault API",
+  "version": "1.0.0",
+  "environment": "development",
+  "timestamp": "2026-04-24T11:32:30.000Z",
+  "endpoints": {
+    "health": "/health",
+    "api": "/api/v1",
+    "studies": "/api/v1/studies"
+  }
+}
+```
+
+### Health Endpoint
 ```bash
 curl http://localhost:5000/health
 ```
-Expected response: `OK`
+Expected response:
+```json
+{
+  "status": "OK",
+  "timestamp": "2026-04-24T11:30:15.123Z",
+  "uptime": 123.45,
+  "environment": "development",
+  "system": {
+    "platform": "linux",
+    "arch": "x64",
+    "nodeVersion": "v22.x.x",
+    "memory": { "used": "10.50 MB", "total": "20.00 MB" },
+    "pid": 12345
+  }
+}
+```
 
 ## API Testing
 
