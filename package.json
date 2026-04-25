@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "nodemon src/server.ts",
     "start": "bun run src/server.ts",
-    "build": "tsc",
+    "build": "bunx tsc",
     "seed": "bun run src/scripts/seed-admin.ts",
-    "types": "tsc --noEmit"
+    "types": "bunx tsc --noEmit"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
