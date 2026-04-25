@@ -67,14 +67,9 @@ The system has different routes:
 - `GET /api/v1/admin/users` - View all users
 
 #### Course-Module Management Routes (Admin Role Required)
-- `GET /api/v1/coursemodule/courses/:courseId/modules` - Get modules linked to a course
-- `GET /api/v1/coursemodule/modules/:moduleId/courses` - Get courses linked to a module
-- `POST /api/v1/coursemodule/courses/:courseId/modules` - Link one module or batch link modules to a course
-- `DELETE /api/v1/coursemodule/courses/:courseId/modules/:moduleId` - Unlink one module from a course
-- `DELETE /api/v1/coursemodule/courses/:courseId/modules` - Batch unlink modules from a course
-- `POST /api/v1/coursemodule/link` - Legacy single-link endpoint kept for compatibility
-- `POST /api/v1/coursemodule/batch/link` - Legacy batch-link endpoint kept for compatibility
-- `POST /api/v1/coursemodule/batch/unlink/:courseId` - Legacy batch-unlink endpoint kept for compatibility
+- `GET /api/v1/courses/:courseId/modules` - Get modules linked to a course
+- `POST /api/v1/courses/:courseId/link/:moduleId` - Link a module to a course (push module ID)
+- `DELETE /api/v1/courses/:courseId/unlink/:moduleId` - Unlink a module from a course (remove module ID)
 
 ### 4. Data Flow Pattern
 
@@ -236,15 +231,6 @@ erDiagram
         number price
         string image
         string createdBy FK
-        datetime createdAt
-        datetime updatedAt
-    }
-    
-    COURSE_MODULE {
-        string _id PK
-        string courseId FK
-        string moduleId FK
-        number order
         datetime createdAt
         datetime updatedAt
     }

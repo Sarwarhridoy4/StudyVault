@@ -11,7 +11,6 @@ import publicRouter from './modules/public/public.route';
 import courseRouter from './modules/course/course.route';
 import moduleRouter from './modules/module/module.route';
 import adminRouter from './modules/admin/admin.route';
-import courseModuleRouter from './modules/coursemodule/coursemodule.route';
 import authRouter from './modules/user/user.route';
 
 const app = express();
@@ -79,7 +78,6 @@ app.get('/health', (_req, res) => {
 app.use('/api/v1/courses', courseRouter);
 app.use('/api/v1/modules', moduleRouter);
 app.use('/api/v1/admin', adminRouter);
-app.use('/api/v1/coursemodule', courseModuleRouter);
 
 // Auth routes
 app.use('/api/v1/auth', authRouter);

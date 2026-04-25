@@ -78,8 +78,8 @@ export const CourseService = {
     return await CourseRepository.count(filter);
   },
 
-  addModuleToCourse: async (courseId: string, moduleId: string, order: number): Promise<ICourse | null> => {
-    return await CourseRepository.addModule(courseId, moduleId, order);
+  addModuleToCourse: async (courseId: string, moduleId: string): Promise<ICourse | null> => {
+    return await CourseRepository.addModule(courseId, moduleId);
   },
 
   removeModuleFromCourse: async (courseId: string, moduleId: string): Promise<ICourse | null> => {

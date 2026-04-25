@@ -114,41 +114,19 @@ curl -X POST http://localhost:5000/api/v1/modules/add \
 
 ## Course-Module Linking
 
-### Modern
+### Simplified Endpoints (Admin Required)
 ```bash
-# Link
-curl -X POST http://localhost:5000/api/v1/coursemodule/courses/:courseId/modules \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"moduleId":"...","order":0}'
+# Link module to course (push module ID to course's modules array)
+curl -X POST http://localhost:5000/api/v1/courses/:courseId/link/:moduleId \
+   -H "Authorization: Bearer <token>"
 
-# Unlink
-curl -X DELETE http://localhost:5000/api/v1/coursemodule/courses/:courseId/modules/:moduleId \
-  -H "Authorization: Bearer <token>"
+# Unlink module from course (remove module ID from course's modules array)
+curl -X DELETE http://localhost:5000/api/v1/courses/:courseId/unlink/:moduleId \
+   -H "Authorization: Bearer <token>"
 
-# Get course modules
-curl http://localhost:5000/api/v1/coursemodule/courses/:courseId/modules
-
-# Get module courses
-curl http://localhost:5000/api/v1/coursemodule/modules/:moduleId/courses
-```
-
-### Legacy
-```bash
-# Single link
-curl -X POST http://localhost:5000/api/v1/coursemodule/link \
-  -H "Content-Type: application/json" \
-  -d '{"courseId":"...","moduleId":"...","order":0}'
-
-# Batch link
-curl -X POST http://localhost:5000/api/v1/coursemodule/batch/link \
-  -H "Content-Type: application/json" \
-  -d '{"courseId":"...","modules":[{"moduleId":"...","order":0}]}'
-
-# Batch unlink
-curl -X POST http://localhost:5000/api/v1/coursemodule/batch/unlink/:courseId \
-  -H "Content-Type: application/json" \
-  -d '{"moduleIds":["...","..."]}'
+# Get all modules linked to a course
+curl http://localhost:5000/api/v1/courses/:courseId/modules
+   -H "Authorization: Bearer <token>"
 ```
 
 ---

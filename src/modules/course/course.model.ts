@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface ICourse extends Document {
   title: string;
@@ -10,10 +10,7 @@ export interface ICourse extends Document {
   image: string;
   imagePublicId?: string;  // Store Cloudinary public_id for image management
   createdBy: string;
-  modules: Array<{
-    module: mongoose.Types.ObjectId;
-    order: number;
-  }>;
+  modules: mongoose.Types.ObjectId[];  // Simple array of module ObjectIds
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,12 +30,7 @@ const CourseSchema = new Schema<ICourse>(
     image: { type: String, required: true },
     imagePublicId: { type: String },
     createdBy: { type: String, required: true },
-    modules: [
-      {
-        module: { type: Schema.Types.ObjectId, required: true, ref: 'Module' },
-        order: { type: Number, required: true, min: 0 },
-      },
-    ],
+    modules: [{ type: Schema.Types.ObjectId, ref: 'Module' }],
   },
   { timestamps: true }
 );

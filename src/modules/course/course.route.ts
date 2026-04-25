@@ -33,4 +33,9 @@ router.patch(
 
 router.delete('/:id', auth, CourseController.deleteCourse);
 
+// Course-Module relationship routes (simple link/unlink - push/pop module ObjectIds)
+router.get('/:courseId/modules', auth, CourseController.getCourseModules);
+router.post('/:courseId/link/:moduleId', auth, CourseController.linkModule);
+router.delete('/:courseId/unlink/:moduleId', auth, CourseController.unlinkModule);
+
 export default router;

@@ -1,5 +1,6 @@
 import Course, { type ICourse } from './course.model';
 import ApiFeatures from '../../utils/ApiFeatures';
+import mongoose from 'mongoose';
 
 export const CourseRepository = {
   create: async (data: Partial<ICourse>): Promise<ICourse> => {
@@ -7,7 +8,7 @@ export const CourseRepository = {
   },
 
   findById: async (id: string): Promise<ICourse | null> => {
-    return await Course.findById(id).populate('modules.module');
+    return await Course.findById(id).populate('modules');
   },
 
   findAll: async (queryStr: Record<string, unknown> = {}): Promise<ICourse[]> => {
@@ -17,11 +18,11 @@ export const CourseRepository = {
       .sort()
       .paginate();
 
-    return await features.getQuery().populate('modules.module');
+    return await features.getQuery().populate('modules');
   },
 
   updateById: async (id: string, data: Partial<ICourse>): Promise<ICourse | null> => {
-    return await Course.findByIdAndUpdate(id, data, { returnDocument: 'after', runValidators: true }).populate('modules.module');
+    return await Course.findByIdAndUpdate(id, data, { returnDocument: 'after', runValidators: true }).populate('modules');
   },
 
   deleteById: async (id: string): Promise<ICourse | null> => {
@@ -32,29 +33,35 @@ export const CourseRepository = {
     return await Course.countDocuments(filter);
   },
 
-  addModule: async (courseId: string, moduleId: string, order: number): Promise<ICourse | null> => {
+  addModule: async (courseId: string, moduleId: string): Promise<ICourse | null> => {
     const course = await Course.findById(courseId);
     if (!course) return null;
 
-    // Remove if module already exists to avoid duplicates
-    course.modules = course.modules.filter(m => m.module.toString() !== moduleId);
-    course.modules.push({ module: moduleId as any, order });
-    course.modules.sort((a, b) => a.order - b.order);
-
-    await course.save();
-    return course.populate('modules.module');
+    // Check if module is already linked (avoid duplicates)
+    const isAlreadyLinked = course.modules.some((id: mongoose.Types.ObjectId) => 
+      id.toString() === moduleId
+    );
+    
+    if (!isAlreadyLinked) {
+      course.modules.push(new mongoose.Types.ObjectId(moduleId));
+      await course.save();
+    }
+    
+    return course.populate('modules');
   },
 
   removeModule: async (courseId: string, moduleId: string): Promise<ICourse | null> => {
     const course = await Course.findById(courseId);
     if (!course) return null;
 
-    course.modules = course.modules.filter(m => m.module.toString() !== moduleId);
+    course.modules = course.modules.filter((id: mongoose.Types.ObjectId) => 
+      id.toString() !== moduleId
+    );
     await course.save();
-    return course.populate('modules.module');
+    return course.populate('modules');
   },
 
   getModules: async (courseId: string): Promise<ICourse | null> => {
-    return await Course.findById(courseId).populate('modules.module');
+    return await Course.findById(courseId).populate('modules');
   },
 };

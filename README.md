@@ -27,7 +27,7 @@ This backend provides secure, scalable, and modular APIs for managing **courses 
 - ✅ Production security hardening
 - ✅ Scalable modular architecture
 - ✅ Course-Module linking (many-to-many)
-- ✅ Admin: Link/unlink modules to courses with simplified endpoints (batch supported)
+- ✅ Admin: Link/unlink modules to courses with simplified endpoints
 
 ---
 

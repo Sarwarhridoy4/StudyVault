@@ -93,4 +93,56 @@ export const CourseController = {
       meta: null,
     });
   }),
+
+  // Link a module to a course (push module ObjectId into modules array)
+  linkModule: catchAsync(async (req: Request, res: Response) => {
+    const courseId = req.params.courseId as string;
+    const { moduleId } = req.body;
+
+    const result = await CourseService.addModuleToCourse(courseId, moduleId);
+    if (!result) {
+      sendResponse(res, 404, { success: false, message: 'Course not found', data: null, meta: null });
+      return;
+    }
+    sendResponse(res, 200, {
+      success: true,
+      message: 'Module linked to course successfully',
+      data: result,
+      meta: null,
+    });
+  }),
+
+  // Unlink a module from a course (remove module ObjectId from modules array)
+  unlinkModule: catchAsync(async (req: Request, res: Response) => {
+    const courseId = req.params.courseId as string;
+    const moduleId = req.params.moduleId as string;
+
+    const result = await CourseService.removeModuleFromCourse(courseId, moduleId);
+    if (!result) {
+      sendResponse(res, 404, { success: false, message: 'Course not found', data: null, meta: null });
+      return;
+    }
+    sendResponse(res, 200, {
+      success: true,
+      message: 'Module unlinked from course successfully',
+      data: result,
+      meta: null,
+    });
+  }),
+
+  // Get all modules linked to a course
+  getCourseModules: catchAsync(async (req: Request, res: Response) => {
+    const courseId = req.params.courseId as string;
+    const result = await CourseService.getCourseModules(courseId);
+    if (!result) {
+      sendResponse(res, 404, { success: false, message: 'Course not found', data: null, meta: null });
+      return;
+    }
+    sendResponse(res, 200, {
+      success: true,
+      message: 'Course modules retrieved successfully',
+      data: result,
+      meta: null,
+    });
+  }),
 };

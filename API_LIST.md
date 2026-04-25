@@ -631,153 +631,72 @@ Example response:
       }
     ]
   },
-  "meta": null
 }
 ```
 
 ## Course-Module Endpoints
 
-These routes are mounted under `/api/v1/coursemodule`.
+Simple link/unlink approach: module ObjectIds are directly pushed/unpushed into the course's `modules` array.
 
-### Simplified Endpoints
-
-### `GET /api/v1/coursemodule/courses/:courseId/modules`
-Get all linked modules for a course.
+### `GET /api/v1/courses/:courseId/modules`
+Get all modules linked to a course.
 
 Example response:
 ```json
 {
   "success": true,
   "message": "Course modules retrieved successfully",
-  "data": [
-    {
-      "module": {
+  "data": {
+    "_id": "69eb6f2a595656e19fba38c1",
+    "title": "Test Course",
+    "modules": [
+      {
         "_id": "680a10000000000000000001",
-        "title": "React Basics"
-      },
-      "order": 0
-    }
-  ],
+        "title": "React Basics",
+        "description": "Learn React from scratch",
+        "category": "frontend",
+        "price": 19.99
+      }
+    ]
+  },
   "meta": null
 }
 ```
 
-### `GET /api/v1/coursemodule/modules/:moduleId/courses`
-Get all linked courses for a module.
+### `POST /api/v1/courses/:courseId/link/:moduleId`
+Link a module to a course (push module ObjectId into the course's modules array).
 
 Example response:
 ```json
 {
   "success": true,
-  "message": "Module courses retrieved successfully",
-  "data": [
-    {
-      "course": "680a10000000000000000011",
-      "order": 0
-    }
-  ],
+  "message": "Module linked to course successfully",
+  "data": {
+    "_id": "69eb6f2a595656e19fba38c1",
+    "title": "Test Course",
+    "modules": [
+      "680a10000000000000000001",
+      "680a10000000000000000002"
+    ]
+  },
   "meta": null
 }
 ```
 
-### `POST /api/v1/coursemodule/courses/:courseId/modules`
-Link one module or many modules to a course.
-
-Single-link payload:
-```json
-{
-  "moduleId": "680a10000000000000000001",
-  "order": 0
-}
-```
-
-Batch-link payload:
-```json
-{
-  "modules": [
-    {
-      "moduleId": "680a10000000000000000001",
-      "order": 0
-    },
-    {
-      "moduleId": "680a10000000000000000002",
-      "order": 1
-    }
-  ]
-}
-```
-
-### `DELETE /api/v1/coursemodule/courses/:courseId/modules/:moduleId`
-Unlink one module from a course.
+### `DELETE /api/v1/courses/:courseId/unlink/:moduleId`
+Unlink a module from a course (remove module ObjectId from the course's modules array).
 
 Example response:
 ```json
 {
   "success": true,
   "message": "Module unlinked from course successfully",
-  "data": null,
+  "data": {
+    "_id": "69eb6f2a595656e19fba38c1",
+    "title": "Test Course",
+    "modules": []
+  },
   "meta": null
-}
-```
-
-### `DELETE /api/v1/coursemodule/courses/:courseId/modules`
-Batch unlink modules from a course.
-
-Example payload:
-```json
-{
-  "moduleIds": [
-    "680a10000000000000000001",
-    "680a10000000000000000002"
-  ]
-}
-```
-
-### Legacy Compatibility Endpoints
-
-### `POST /api/v1/coursemodule/link`
-Legacy single-link endpoint.
-
-Example payload:
-```json
-{
-  "courseId": "680a10000000000000000011",
-  "moduleId": "680a10000000000000000001",
-  "order": 0
-}
-```
-
-### `POST /api/v1/coursemodule/batch/link`
-Legacy batch-link endpoint.
-**Returns:** 201 Created
-
-Example payload:
-```json
-{
-  "courseId": "680a10000000000000000011",
-  "modules": [
-    {
-      "moduleId": "680a10000000000000000001",
-      "order": 0
-    },
-    {
-      "moduleId": "680a10000000000000000002",
-      "order": 1
-    }
-  ]
-}
-```
-
-### `POST /api/v1/coursemodule/batch/unlink/:courseId`
-Legacy batch-unlink endpoint.
-
-Example payload:
-```json
-{
-  "moduleIds": [
-    "680a10000000000000000001",
-    "680a10000000000000000002"
-  ]
 }
 ```
 
@@ -808,32 +727,3 @@ Example payload:
 }
 ```
 **Note:** `createdBy` is set automatically from the authenticated user and should NOT be provided by the client.
-
-### Course-module single link body
-```json
-{
-  "moduleId": "string",
-  "order": 0
-}
-```
-
-### Course-module batch link body
-```json
-{
-  "modules": [
-    {
-      "moduleId": "string",
-      "order": 0
-    }
-  ]
-}
-```
-
-### Course-module batch unlink body
-```json
-{
-  "moduleIds": [
-    "string"
-  ]
-}
-```
