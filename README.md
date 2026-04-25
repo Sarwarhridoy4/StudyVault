@@ -560,13 +560,13 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-    A[Client POST /api/v1/courses<br/>multipart/form-data] --> B[Multer Middleware<br/>memoryStorage]
+    A[Client POST /api/v1/courses multipart form-data] --> B[Multer Middleware memoryStorage]
     B --> C{Validate?}
     C -->|Size > 5MB| D[400: File too large]
     C -->|Invalid MIME| E[400: Invalid file type]
     C -->|Valid| X[req.file.buffer]
-    X --> Y[Course Service<br/>createWithImageTransaction]
-    Y --> Z[Cloudinary Service<br/>uploadImage(buffer)]
+    X --> Y[Course Service createWithImageTransaction]
+    Y --> Z[Cloudinary Service uploadImage buffer]
     Z --> H{Cloudinary?}
     H -->|Success| I[201 Course created]
     H -->|Failed| J[500 CloudinaryError]
@@ -759,13 +759,13 @@ graph TB
 
 ```mermaid
 graph LR
-    A[Incoming Request] --> B{Firebase Token<br/>Valid?}
+    A[Incoming Request] --> B{Firebase Token Valid?}
     B -->|No| C[401 Unauthorized]
-    B -->|Yes| D[Attach req.user<br/>(uid, email, role)]
-    D --> E{Role Check<br/>Required: USER?}
-    E -->|Has Role| M[✅ Controller → Service]
+    B -->|Yes| D[Attach req.user uid email role]
+    D --> E{Role Check Required USER?}
+    E -->|Has Role| M[Controller to Service]
     E -->|Missing Role| N[403 Forbidden]
-    C --> H[errorHandler<br/>JSON Response]
+    C --> H[errorHandler JSON Response]
     N --> H
 ```
 
@@ -834,19 +834,19 @@ erDiagram
 
 ```mermaid
 graph TD
-    A[Client:<br/>GET /api/v1/modules?search=react<br/>&category=frontend&page=1&limit=10] --> B[Router]
+    A[Client GET modules with search filters page and limit] --> B[Router]
     B --> C[Controller]
     C --> D[Service]
     D --> E[Repository]
     E --> Q[ApiFeatures Builder]
      
-    Q --> Q1[.search(['title','shortDescription','description'])]
-    Q1 --> Q2[.filter()<br/>category, priceMin/priceMax]
-    Q2 --> Q3[.sort()<br/>default: -createdAt]
-    Q3 --> Q4[.paginate()<br/>page, limit]
+    Q --> Q1[Search across title shortDescription and description]
+    Q1 --> Q2[Filter by category and price range]
+    Q2 --> Q3[Sort by createdAt or requested field]
+    Q3 --> Q4[Paginate by page and limit]
     Q4 --> Z[MongoDB Query]
     Z --> H[Execute]
-    H --> I[Response:<br/>{success, data: modules, meta}]
+    H --> I[Response with success data modules and meta]
 ```
 
 ---
@@ -1063,13 +1063,13 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-    A[Client POST /api/v1/courses<br/>multipart/form-data] --> B[Upload Middleware<br/>Multer.memoryStorage]
+    A[Client POST /api/v1/courses multipart form-data] --> B[Upload Middleware Multer.memoryStorage]
     B --> C{Validate File?}
     C -->|Size > 5MB| D[400: File too large]
     C -->|Invalid MIME| E[400: Invalid file type]
     C -->|Valid| X[Buffer in req.file]
-    X --> Y[Course Service<br/>image transaction helper]
-    Y --> Z[Cloudinary Service<br/>uploader.upload(buffer)]
+    X --> Y[Course Service image transaction helper]
+    Y --> Z[Cloudinary Service uploader.upload buffer]
     Z --> H{Cloudinary Success?}
     H -->|Success| I[201 Created]
     H -->|Failed| J[500 CloudinaryError]
@@ -1211,13 +1211,13 @@ graph TB
 
 ```mermaid
 graph LR
-    A[Request Arrives] --> B{Auth Middleware<br/>Verify Firebase Token}
+    A[Request Arrives] --> B{Auth Middleware Verify Firebase Token}
     B -->|Invalid| C[401 Unauthorized]
-    B -->|Valid| D[Attach req.user<br/>(uid, email, role)]
-    D --> E{RBAC Middleware<br/>Check Role}
-    E -->|User has role| P[✅ Allow]
+    B -->|Valid| D[Attach req.user uid email role]
+    D --> E{RBAC Middleware Check Role}
+    E -->|User has role| P[Allow]
     E -->|Missing role| Q[403 Forbidden]
-    P --> H[Controller → Service]
+    P --> H[Controller to Service]
 ```
 
 ---
@@ -1285,20 +1285,20 @@ erDiagram
 
 ```mermaid
 graph TD
-    A[Client Request<br/>GET /api/v1/modules?search=react&category=frontend&page=1&limit=10] --> B[Router]
+    A[Client Request GET modules with search filters page and limit] --> B[Router]
     B --> C[Controller]
     C --> D[Service]
     D --> E[Repository]
     E --> Q[ApiFeatures Builder]
      
-    Q --> Q1[search(['title','description'])]
-    Q1 --> Q2[filter(category, priceMin/priceMax)]
-    Q2 --> Q3[sort(createdAt, price)]
-    Q3 --> Q4[paginate(limit, skip)]
+    Q --> Q1[Search across title and description]
+    Q1 --> Q2[Filter by category and price range]
+    Q2 --> Q3[Sort by createdAt or price]
+    Q3 --> Q4[Paginate with limit and skip]
     Q4 --> Z[MongoDB Query Built]
     Z --> H[Execute & Return]
     
-    H --> I[Response with meta:<br/>{page, limit, total, totalPages}]
+    H --> I[Response with page limit total and totalPages]
 ```
 
 ---
