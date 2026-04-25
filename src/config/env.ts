@@ -19,6 +19,15 @@ const env = {
   EMAIL_USER: process.env.EMAIL_USER || 'noreply@example.com',
   EMAIL_PASS: process.env.EMAIL_PASS || '',
   EMAIL_FROM: process.env.EMAIL_FROM || 'StudyVault <noreply@example.com>',
+  // CORS configuration
+  CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
+  // Admin credentials for seeding
+  ADMIN_UID: process.env.ADMIN_UID || 'admin_001',
+  ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@studyvault.com',
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || 'ChangeMe123!@#',
+  ADMIN_DISPLAY_NAME: process.env.ADMIN_DISPLAY_NAME || 'Admin User',
+  ADMIN_PHOTO_URL: process.env.ADMIN_PHOTO_URL || '',
+  
   // Frontend URL for reset link
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
 };
